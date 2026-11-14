@@ -7718,7 +7718,12 @@ class XHSCardStudioView extends ItemView {
       element.style.border = `${borderWidth}px solid ${borderMode === "solid" ? this.resolveCssModuleColor(module.borderColor || module.color || "var(--xhs-accent)") : "transparent"}`;
       element.style.setProperty("--xhs-pill-border-width", `${borderWidth}px`);
       element.style.setProperty("--xhs-pill-border-color", this.resolveCssModuleColor(module.borderColor || "var(--xhs-accent)"));
-      element.classList.toggle("is-gradient-border", borderMode === "gradient");
+      if (borderMode === "gradient") {
+        const border = this.createPillLabelBorderCanvas(module, borderWidth);
+        if (border) {
+          element.style.background = `url("${border.toDataURL()}") center / 100% 100% no-repeat border-box`;
+        }
+      }
     }
 
     if (module.className === "xhs-module-google-subtitle") {
@@ -13015,24 +13020,6 @@ class XHSCardStudioView extends ItemView {
         overflow: hidden;
         border-radius: 999px !important;
       }
-      .xhs-module-label-pill.is-gradient-border,
-      .xhs-module-layout-pill.is-gradient-border {
-        border-color: transparent !important;
-        background: transparent !important;
-      }
-      .xhs-module-label-pill.is-gradient-border::before,
-      .xhs-module-layout-pill.is-gradient-border::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        padding: var(--xhs-pill-border-width, 2px);
-        background: var(--xhs-title-gradient-css, linear-gradient(105deg, var(--xhs-accent), var(--xhs-secondary)));
-        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-        -webkit-mask-composite: xor;
-        mask-composite: exclude;
-        pointer-events: none;
-      }
       .xhs-module-resize-handle,
       .xhs-module-rotate-handle,
       .xhs-alignment-guide,
@@ -14345,7 +14332,7 @@ class XHSCardStudioView extends ItemView {
     ctx.restore();
   }
 
-  drawPillLabelBorder(ctx, module, borderWidth) {
+  createPillLabelBorderCanvas(module, borderWidth) {
     const width = Math.max(1, Math.round(Number(module.w) || 1));
     const height = Math.max(1, Math.round(Number(module.h) || 1));
     const outerRadius = Math.min(width, height) / 2;
@@ -14353,25 +14340,11 @@ class XHSCardStudioView extends ItemView {
     const innerHeight = Math.max(0, height - borderWidth * 2);
     const innerRadius = Math.max(0, Math.min(innerWidth, innerHeight) / 2);
 
-    if (typeof document === "undefined") {
-      ctx.save();
-      ctx.lineJoin = "round";
-      ctx.lineCap = "round";
-      ctx.strokeStyle = (module.borderMode || "gradient") === "gradient"
-        ? this.createTextGradient(ctx, module.x, module.y, width)
-        : this.resolveModuleFill(module.borderColor || module.color || "var(--xhs-accent)");
-      ctx.lineWidth = borderWidth;
-      this.roundRectPath(ctx, module.x + borderWidth / 2, module.y + borderWidth / 2, width - borderWidth, height - borderWidth, outerRadius);
-      ctx.stroke();
-      ctx.restore();
-      return;
-    }
-
     const buffer = document.createElement("canvas");
     buffer.width = width;
     buffer.height = height;
     const bufferCtx = buffer.getContext("2d");
-    if (!bufferCtx) return;
+    if (!bufferCtx) return null;
     bufferCtx.fillStyle = (module.borderMode || "gradient") === "gradient"
       ? this.createTextGradient(bufferCtx, 0, 0, width)
       : this.resolveModuleFill(module.borderColor || module.color || "var(--xhs-accent)");
@@ -14383,7 +14356,29 @@ class XHSCardStudioView extends ItemView {
       bufferCtx.fill();
       bufferCtx.globalCompositeOperation = "source-over";
     }
-    ctx.drawImage(buffer, module.x, module.y, width, height);
+    return buffer;
+  }
+
+  drawPillLabelBorder(ctx, module, borderWidth) {
+    if (typeof document !== "undefined") {
+      const border = this.createPillLabelBorderCanvas(module, borderWidth);
+      if (border) ctx.drawImage(border, module.x, module.y);
+      return;
+    }
+
+    const width = Math.max(1, Math.round(Number(module.w) || 1));
+    const height = Math.max(1, Math.round(Number(module.h) || 1));
+    const outerRadius = Math.min(width, height) / 2;
+    ctx.save();
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.strokeStyle = (module.borderMode || "gradient") === "gradient"
+      ? this.createTextGradient(ctx, module.x, module.y, width)
+      : this.resolveModuleFill(module.borderColor || module.color || "var(--xhs-accent)");
+    ctx.lineWidth = borderWidth;
+    this.roundRectPath(ctx, module.x + borderWidth / 2, module.y + borderWidth / 2, width - borderWidth, height - borderWidth, outerRadius);
+    ctx.stroke();
+    ctx.restore();
   }
 
   drawHighlightedTitleModule(ctx, module) {
