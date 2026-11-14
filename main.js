@@ -10,13 +10,6 @@ const {
   normalizePath
 } = require("obsidian");
 
-let nodeFs = null;
-try {
-  nodeFs = require("fs");
-} catch (error) {
-  nodeFs = null;
-}
-
 const VIEW_TYPE = "xhs-card-studio-view";
 const DEFAULT_IMAGE_RADIUS = 0;
 const HUAWEI_DETAIL_BACKGROUND = "#eaf7ff";
@@ -12463,43 +12456,22 @@ class XHSCardStudioView extends ItemView {
     if (!raw) return "";
     if (this.imageCache.has(raw)) return this.imageCache.get(raw);
 
-    if (/^[a-zA-Z]:[\\/]/.test(raw)) {
-      if (nodeFs && nodeFs.promises) {
-        try {
-          const bytes = await nodeFs.promises.readFile(raw);
-          const dataUrl = await this.arrayBufferToDataUrl(bytes, this.mimeFromPath(raw));
-          this.imageCache.set(raw, dataUrl);
-          return dataUrl;
-        } catch (error) {
-          console.error("[XHS Card Studio] 读取本地图片失败", error);
-        }
-      }
-      const url = `file:///${raw.replace(/\\/g, "/")}`;
-      this.imageCache.set(raw, url);
-      return url;
-    }
-    if (/^(file:|data:|https?:|app:)/.test(raw)) {
+    if (/^(data:image\/|https?:\/\/)/i.test(raw)) {
       this.imageCache.set(raw, raw);
       return raw;
     }
 
     const clean = raw.replace(/^!\[\[|\]\]$/g, "").replace(/^\[\[|\]\]$/g, "").split("|")[0];
-    const file = this.app.metadataCache.getFirstLinkpathDest(clean, this.activeFile ? this.activeFile.path : "");
-    if (file instanceof TFile) {
-      const dataUrl = await this.fileToDataUrl(file);
-      this.imageCache.set(raw, dataUrl);
-      return dataUrl;
-    }
+    if (!clean || /^(?:[a-z][a-z\d+.-]*:|[\\/])/i.test(clean)) return "";
 
-    const normalized = normalizePath(clean);
-    if (await this.app.vault.adapter.exists(normalized)) {
-      const bytes = await this.app.vault.adapter.readBinary(normalized);
-      const dataUrl = await this.arrayBufferToDataUrl(bytes, this.mimeFromPath(normalized));
-      this.imageCache.set(raw, dataUrl);
-      return dataUrl;
-    }
+    const vault = this.app.vault;
+    const file = this.app.metadataCache.getFirstLinkpathDest(clean, this.activeFile?.path || "")
+      || vault.getAbstractFileByPath(normalizePath(clean));
+    if (!(file instanceof TFile)) return "";
 
-    return "";
+    const dataUrl = await this.fileToDataUrl(file);
+    this.imageCache.set(raw, dataUrl);
+    return dataUrl;
   }
 
   async fileToDataUrl(file) {
