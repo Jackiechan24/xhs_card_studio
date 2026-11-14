@@ -23,8 +23,10 @@ const DEFAULT_SETTINGS = {
 };
 
 // Saved notes may still reference these legacy cover styles by ID.
-const BRAND_COVER_STYLE_IDS = new Set([
-  "clean-gradient", "huawei-product", "instagram-gradient", "google-search"
+const RETIRED_COVER_STYLE_IDS = new Set([
+  "ai-course", "clean-gradient", "huawei-product", "instagram-gradient", "google-search",
+  "ux-green", "grid-photo-blue", "google-omni", "minimal-grid-gray",
+  "hero-blue-purple", "saas-green-formula", "dark-fresh-green"
 ]);
 
 const ACTIVE_COVER_STYLE_IDS = new Set(["composition", "neon-grid", "nng-red-system"]);
@@ -40,51 +42,6 @@ const COVER_LAYOUT_PRESETS = [
     gradientTo: ""
   },
   {
-    id: "ux-green",
-    background: "#fbfaf6",
-    accent: "#07945f",
-    secondary: "#e8f6ed",
-    text: "#111820",
-    gradientFrom: "#06945f",
-    gradientTo: "#18b46d"
-  },
-  {
-    id: "grid-photo-blue",
-    background: "#ffffff",
-    accent: "#171f77",
-    secondary: "#e8ecff",
-    text: "#050505",
-    gradientFrom: "#ffffff",
-    gradientTo: "#171f77"
-  },
-  {
-    id: "google-omni",
-    background: "#ffffff",
-    accent: "#4285f4",
-    secondary: "#f8fafd",
-    text: "#202124",
-    gradientFrom: "#4285f4",
-    gradientTo: "#34a853"
-  },
-  {
-    id: "minimal-grid-gray",
-    background: "#f2f4f4",
-    accent: "#2e4150",
-    secondary: "#e8ecec",
-    text: "#2a3a46",
-    gradientFrom: "#2e4150",
-    gradientTo: "#9da8ad"
-  },
-  {
-    id: "hero-blue-purple",
-    background: "#eef4ff",
-    accent: "#5da2ff",
-    secondary: "#b45cff",
-    text: "#111522",
-    gradientFrom: "#5da2ff",
-    gradientTo: "#b45cff"
-  },
-  {
     id: "nng-red-system",
     background: "#8d252b",
     accent: "#fdb88c",
@@ -93,30 +50,11 @@ const COVER_LAYOUT_PRESETS = [
     gradientFrom: "#fdb88c",
     gradientTo: "#f2aff3"
   },
-  {
-    id: "saas-green-formula",
-    background: "#eef0f0",
-    accent: "#35f46c",
-    secondary: "#dfe4e4",
-    text: "#08090b",
-    gradientFrom: "#35f46c",
-    gradientTo: "#14c95a"
-  },
-  {
-    id: "dark-fresh-green",
-    background: "#07090c",
-    accent: "#2d8cff",
-    secondary: "#35c868",
-    text: "#ffffff",
-    gradientFrom: "#2d8cff",
-    gradientTo: "#35c868"
-  }
 ];
 
 function isSupportedCoverStyle(id) {
   return ACTIVE_COVER_STYLE_IDS.has(id)
-    || BRAND_COVER_STYLE_IDS.has(id)
-    || (id !== "none" && COVER_LAYOUT_PRESETS.some(preset => preset.id === id));
+    || RETIRED_COVER_STYLE_IDS.has(id);
 }
 
 const CLEAN_GRADIENT_PALETTES = [
@@ -841,12 +779,6 @@ const DEFAULT_CONFIG = {
   detail_image_layouts: {},
   title_letter_spacing: 0,
   title_line_height: VISUAL_RULES.coverTitleLeading,
-  layout_title_left: 82,
-  layout_title_top: 90,
-  layout_subtitle_top: 580,
-  layout_tags_top: 980,
-  layout_small_top: 1034,
-  layout_content_left: 92,
   border_radius: 0,
   border_width: 0,
   background_image: "",
@@ -870,6 +802,15 @@ const COMPOSITION_LEGACY_VARIANTS = {
   center: "center-banner"
 };
 
+const MOSAIC_MAIN_HEIGHT = 936 * 9 / 16;
+const MOSAIC_SECONDARY_HEIGHT = 456 * 9 / 16;
+const MOSAIC_SECONDARY_Y = 72 + MOSAIC_MAIN_HEIGHT + 24;
+const MOSAIC_IMAGE_FRAMES = [
+  [72, 72, 936, MOSAIC_MAIN_HEIGHT],
+  [72, MOSAIC_SECONDARY_Y, 456, MOSAIC_SECONDARY_HEIGHT],
+  [552, MOSAIC_SECONDARY_Y, 456, MOSAIC_SECONDARY_HEIGHT]
+];
+
 const COMPOSITION_PRESETS = [
   {
     id: "aside-image", name: "右上图左文", family: "horizontal", theme: "cobalt", titleSize: 104, subtitleSize: 42,
@@ -885,7 +826,7 @@ const COMPOSITION_PRESETS = [
   },
   {
     id: "mosaic", name: "主辅三图", family: "vertical", theme: "citrus", titleSize: 108, subtitleSize: 40,
-    images: [[0,0,336,252],[0,264,336,224],[0,500,336,252],[348,0,384,512],[348,536,384,216],[744,0,336,224],[744,236,336,252],[744,500,336,252]], block: [72,788,936,3],
+    images: MOSAIC_IMAGE_FRAMES, block: [72,788,936,3],
     title: [72,830,936,250], subtitle: [72,1120,400,85],
     description: [520,1120,488,170]
   },
@@ -921,61 +862,6 @@ const COMPOSITION_PRESETS = [
   }
 ];
 
-const COMPOSITION_ANCHOR_GEOMETRY = {
-  "aside-image": {"images":[[480,64,528,800]],"block":[72,840,360,4],"title":[72,916,936,280],"subtitle":[72,540,360,80],"description":[72,644,360,160]},
-  "solid-poster": {"images":[[0,0,1080,1440]],"block":[270,860,738,490],"title":[300,960,678,200],"subtitle":[318,895,642,55],"description":[300,1195,678,120]},
-  "mosaic": {"images":[[0,0,306,230],[0,248,306,320],[0,586,306,214],[324,0,432,550],[324,568,432,232],[774,0,306,170],[774,188,306,360],[774,566,306,234]],"block":[72,824,936,4],"title":[72,865,936,230],"subtitle":[72,1150,400,85],"description":[520,1150,488,170]},
-  "center-banner": {"images":[[0,64,1080,1100]],"block":[125,1205,830,4],"title":[96,420,888,220],"subtitle":[180,670,720,65],"description":[125,1240,830,135]},
-  "headline-band": {"images":[[0,460,1080,710]],"block":[72,1200,936,4],"title":[72,88,936,255],"subtitle":[72,370,936,65],"description":[72,1230,820,135]},
-  "image-caption": {"images":[[72,585,936,783]],"block":[72,548,936,4],"title":[72,100,936,230],"subtitle":[72,380,400,85],"description":[520,380,488,140]},
-  "band-columns": {"images":[[0,0,1080,850]],"block":[72,880,936,4],"title":[72,920,936,240],"subtitle":[72,1190,430,85],"description":[560,1190,448,170]},
-  "left-image-title": {"images":[[0,360,540,1080]],"block":[590,770,418,4],"title":[180,100,828,220],"subtitle":[590,650,418,90],"description":[590,810,418,210]}
-};
-
-const COMPOSITION_BALANCED_GEOMETRY = {
-  "aside-image": { images: [[500,64,516,810]], block: [72,870,230,4], title: [72,925,944,340], subtitle: [72,520,380,82], description: [72,625,380,210] },
-  "solid-poster": { images: [[0,0,1080,1440]], block: [420,850,588,90], title: [420,960,588,240], subtitle: [442,867,544,60], description: [420,1220,588,145] },
-  mosaic: { images: [[0,0,340,250],[0,268,340,385],[0,671,340,200],[360,0,340,430],[360,448,340,423],[720,0,360,195],[720,213,360,402],[720,633,360,238]], block: [72,898,936,4], title: [72,950,550,360], subtitle: [665,950,340,78], description: [665,1060,340,230] },
-  "center-banner": { images: [[0,80,1080,1060]], block: [125,1180,830,4], title: [150,425,780,260], subtitle: [250,710,580,85], description: [125,1210,830,135] },
-  "headline-band": { images: [[0,480,1080,680]], block: [72,1180,936,4], title: [72,125,936,275], subtitle: [72,405,850,70], description: [72,1210,820,145] },
-  "image-caption": { images: [[0,515,1080,620]], block: [515,1160,493,4], title: [72,135,936,265], subtitle: [72,410,850,76], description: [515,1190,493,145] },
-  "band-columns": { images: [[0,0,1080,730]], block: [72,754,936,4], title: [72,800,936,255], subtitle: [72,1080,760,75], description: [72,1190,820,145] },
-  "left-image-title": { images: [[0,245,450,1195]], block: [490,920,518,100], title: [490,570,518,155], subtitle: [512,940,474,65], description: [490,760,518,125] }
-};
-
-const COMPOSITION_LAST_GEOMETRY = {
-  "aside-image": { images: [[500,64,516,810]], block: [72,1290,230,4], title: [72,905,944,340], subtitle: [72,375,380,82], description: [72,480,380,310] },
-  "solid-poster": { images: [[0,0,1080,1440]], block: [565,850,455,105], title: [565,970,455,365], subtitle: [587,872,410,65], description: [620,130,390,200] },
-  mosaic: { images: [[0,0,340,250],[0,268,340,385],[0,671,340,200],[360,0,340,430],[360,448,340,423],[720,0,360,195],[720,213,360,402],[720,633,360,238]], block: [72,898,936,4], title: [72,930,550,370], subtitle: [665,930,340,78], description: [665,1030,340,250] },
-  "center-banner": { images: [[0,120,1080,945]], block: [72,88,140,4], title: [150,425,780,300], subtitle: [250,755,580,85], description: [125,1130,830,205] },
-  "headline-band": { images: [[0,480,1080,680]], block: [72,1180,936,4], title: [72,125,936,275], subtitle: [72,405,850,70], description: [72,1210,936,145] },
-  "image-caption": { images: [[0,515,1080,620]], block: [515,1160,493,4], title: [72,135,936,265], subtitle: [72,410,850,76], description: [515,1190,493,175] },
-  "band-columns": { images: [[0,0,1080,730]], block: [72,754,936,4], title: [72,800,936,280], subtitle: [72,1095,760,75], description: [72,1210,936,145] },
-  "left-image-title": { images: [[0,245,515,1195]], block: [540,1090,480,110], title: [555,130,455,365], subtitle: [565,1110,430,72], description: [555,545,455,390] }
-};
-
-const COMPOSITION_PREVIOUS_GEOMETRY = {
-  "aside-image": { images: [[540, 62, 538, 745]], block: [0, 1390, 285, 22], title: [300, 920, 725, 225], subtitle: [72, 420, 420, 85], description: [72, 510, 420, 280] },
-  "solid-poster": { images: [[0, 0, 1080, 1440]], block: [0, 720, 540, 155], title: [580, 1025, 450, 280], subtitle: [90, 750, 405, 95], description: [670, 110, 340, 170] },
-  mosaic: { images: [[0, 0, 293, 280], [0, 295, 293, 443], [0, 753, 293, 195], [309, 0, 293, 465], [309, 480, 293, 468], [618, 0, 293, 185], [618, 200, 293, 440], [618, 655, 293, 293]], block: [1010, 795, 18, 150], title: [70, 1018, 490, 240], subtitle: [645, 1050, 355, 95], description: [645, 1150, 355, 190] },
-  "center-banner": { images: [[0, 325, 1080, 770]], block: [440, 0, 200, 20], title: [170, 635, 740, 225], subtitle: [275, 865, 530, 90], description: [190, 1190, 700, 170] },
-  "headline-band": { images: [[0, 510, 1080, 495]], block: [68, 955, 78, 80], title: [150, 205, 830, 215], subtitle: [150, 430, 780, 75], description: [70, 1110, 920, 220] },
-  "image-caption": { images: [[0, 655, 1080, 495]], block: [0, 1370, 280, 24], title: [140, 255, 850, 215], subtitle: [140, 475, 795, 90], description: [605, 1200, 410, 140] },
-  "band-columns": { images: [[0, 0, 1080, 710]], block: [0, 708, 110, 24], title: [390, 760, 640, 235], subtitle: [390, 1010, 630, 100], description: [75, 780, 280, 460] },
-  "left-image-title": { images: [[0, 495, 515, 875]], block: [505, 1120, 525, 105], title: [560, 225, 475, 245], subtitle: [545, 1130, 485, 85], description: [560, 520, 440, 515] }
-};
-
-const COMPOSITION_RECENT_GEOMETRY = {
-  "aside-image": { images: [[500, 64, 516, 772]], block: [72, 1310, 230, 18], title: [72, 870, 944, 350], subtitle: [72, 375, 380, 82], description: [72, 480, 380, 310] },
-  "solid-poster": { images: [[0, 0, 1080, 1440]], block: [0, 735, 565, 138], title: [565, 990, 455, 345], subtitle: [72, 760, 460, 80], description: [620, 130, 390, 200] },
-  mosaic: { images: [[0, 0, 340, 215], [0, 233, 340, 336], [0, 587, 340, 175], [360, 0, 340, 375], [360, 393, 340, 369], [720, 0, 360, 170], [720, 188, 360, 350], [720, 556, 360, 206]], block: [1006, 828, 16, 120], title: [72, 830, 550, 355], subtitle: [665, 850, 340, 92], description: [665, 970, 340, 210] },
-  "center-banner": { images: [[0, 195, 1080, 755]], block: [72, 145, 132, 16], title: [150, 430, 780, 285], subtitle: [250, 740, 580, 85], description: [125, 1030, 830, 230] },
-  "headline-band": { images: [[0, 480, 1080, 565]], block: [72, 1018, 72, 72], title: [72, 125, 936, 275], subtitle: [72, 405, 850, 70], description: [72, 1120, 936, 195] },
-  "image-caption": { images: [[0, 540, 1080, 570]], block: [72, 1360, 220, 18], title: [72, 165, 936, 265], subtitle: [72, 440, 850, 76], description: [515, 1150, 493, 185] },
-  "band-columns": { images: [[0, 0, 1080, 825]], block: [72, 821, 110, 20], title: [420, 885, 588, 285], subtitle: [420, 1200, 588, 86], description: [72, 900, 315, 300] },
-  "left-image-title": { images: [[0, 245, 515, 1195]], block: [540, 1090, 480, 110], title: [555, 130, 455, 365], subtitle: [565, 1110, 430, 72], description: [555, 545, 455, 390] }
-};
-
 const COMPOSITION_DEFAULT_CONTENT = {
   title: "AI工具用得越多，为什么你反而更忙？",
   subtitle: "职场 AI 技能提升指南",
@@ -1009,7 +895,11 @@ const COVER_TEXT_GRID = Object.freeze({...VISUAL_RULES,
 function removeReferenceLayoutConfig(config) {
   if (!config || typeof config !== "object") return false;
   let changed = false;
-  for (const key of ["editorial_composition", "editorial_title_lines", "editorial_layout_version", "editorial_layouts_by_composition"]) {
+  for (const key of [
+    "editorial_composition", "editorial_title_lines", "editorial_layout_version", "editorial_layouts_by_composition",
+    "layout_title_left", "layout_title_top", "layout_subtitle_top",
+    "layout_tags_top", "layout_small_top", "layout_content_left"
+  ]) {
     if (Object.prototype.hasOwnProperty.call(config, key)) {
       delete config[key];
       changed = true;
@@ -1250,14 +1140,27 @@ class XHSCardStudioView extends ItemView {
 
   normalizeConfig(frontmatter, fallbackTitle) {
     const merged = Object.assign({}, DEFAULT_CONFIG, frontmatter || {});
-    const states=frontmatter?.cover_template_settings;
-    merged.cover_template_settings=states && typeof states==="object" && !Array.isArray(states)
-      ?JSON.parse(JSON.stringify(states)):{};
+    const states = frontmatter?.cover_template_settings;
+    const activeTemplates = new Set(this.getUnifiedCoverTemplates().map(choice =>
+      choice.style === "composition" ? `composition:${choice.id}` : choice.style));
+    merged.cover_template_settings = states && typeof states === "object" && !Array.isArray(states)
+      ? Object.fromEntries(Object.entries(JSON.parse(JSON.stringify(states))).filter(([key, state]) =>
+        activeTemplates.has(key) && state && typeof state === "object"))
+      : {};
+    for (const state of Object.values(merged.cover_template_settings)) {
+      removeReferenceLayoutConfig(state.appearance);
+      if (state.appearance) delete state.appearance.composition_layout;
+    }
     removeReferenceLayoutConfig(merged);
 
+    const legacyLayout = this.toText(merged.cover_layout_preset);
     merged.cover_layout_preset = COVER_LAYOUT_PRESETS.some((preset) => preset.id === merged.cover_layout_preset)
       ? merged.cover_layout_preset
       : DEFAULT_CONFIG.cover_layout_preset;
+    if (RETIRED_COVER_STYLE_IDS.has(legacyLayout)
+      && (!frontmatter?.xhs_style || !ACTIVE_COVER_STYLE_IDS.has(merged.xhs_style))) {
+      merged.xhs_style = legacyLayout;
+    }
     merged.xhs_style = isSupportedCoverStyle(merged.xhs_style)
       ? merged.xhs_style
       : (this.isCoverLayoutStyle(merged.cover_layout_preset) ? merged.cover_layout_preset : DEFAULT_CONFIG.xhs_style);
@@ -1417,12 +1320,6 @@ class XHSCardStudioView extends ItemView {
     merged.detail_image_layouts = this.normalizeDetailImageLayouts(merged.detail_image_layouts);
     merged.title_letter_spacing = 0;
     merged.title_line_height = VISUAL_RULES.coverTitleLeading;
-    merged.layout_title_left = this.toNumber(merged.layout_title_left, DEFAULT_CONFIG.layout_title_left, 0, 500);
-    merged.layout_title_top = this.toNumber(merged.layout_title_top, DEFAULT_CONFIG.layout_title_top, 0, 900);
-    merged.layout_subtitle_top = this.toNumber(merged.layout_subtitle_top, DEFAULT_CONFIG.layout_subtitle_top, 0, 1100);
-    merged.layout_tags_top = this.toNumber(merged.layout_tags_top, DEFAULT_CONFIG.layout_tags_top, 0, 1200);
-    merged.layout_small_top = this.toNumber(merged.layout_small_top, DEFAULT_CONFIG.layout_small_top, 0, 1300);
-    merged.layout_content_left = this.toNumber(merged.layout_content_left, DEFAULT_CONFIG.layout_content_left, 0, 500);
     merged.border_radius = 0;
     merged.border_width = DEFAULT_CONFIG.border_width;
     merged.background_image = "";
@@ -1431,17 +1328,25 @@ class XHSCardStudioView extends ItemView {
     merged.icon2_image = "";
     merged.logo_image = "";
     merged.xhs_modules_by_style = this.normalizeModulesByStyle(merged.xhs_modules_by_style);
+    const savedRetiredModules = this.getStoredModulesForStyle(merged, merged.xhs_style);
+    for (const style of Object.keys(merged.xhs_modules_by_style)) {
+      if (!ACTIVE_COVER_STYLE_IDS.has(style)) delete merged.xhs_modules_by_style[style];
+    }
+    merged.mosaic_image_archive = Array.isArray(merged.mosaic_image_archive)
+      ? merged.mosaic_image_archive.filter(image => image?.src).map(({ id, src }) => ({ id, src })) : [];
     merged.composition_modules_by_layout = this.normalizeCompositionModules(merged.composition_modules_by_layout);
-    Object.entries(COMPOSITION_LEGACY_VARIANTS).forEach(([family, presetId]) => {
-      if (!merged.composition_modules_by_layout[presetId] && merged.composition_modules_by_layout[family]) {
-        merged.composition_modules_by_layout[presetId] = this.cloneModules(merged.composition_modules_by_layout[family]);
+    for (const key of ["composition_modules_by_layout", "composition_appearance_by_layout"]) {
+      const layouts = merged[key];
+      for (const [family, presetId] of Object.entries(COMPOSITION_LEGACY_VARIANTS)) {
+        if (!layouts[presetId] && layouts[family]) layouts[presetId] = layouts[family];
+        delete layouts[family];
       }
-    });
+    }
     COMPOSITION_PRESETS.forEach((preset) => {
       const modules = merged.composition_modules_by_layout[preset.id];
       if (modules) {
         this.upgradeCompositionTypography(modules, preset);
-        this.upgradeCompositionDefaultGeometry(modules, preset);
+        this.applyCurrentCompositionGeometry(modules, preset);
         this.normalizeCompositionEmptyImages(modules);
       }
     });
@@ -1452,10 +1357,8 @@ class XHSCardStudioView extends ItemView {
       return merged;
     }
     if (merged.xhs_style === "composition") {
-      this.upgradeCompositionTypography(merged.xhs_modules,
-        COMPOSITION_PRESETS.find((item) => item.id === merged.composition_variant));
-      this.upgradeCompositionDefaultGeometry(merged.xhs_modules,
-        COMPOSITION_PRESETS.find((item) => item.id === merged.composition_variant));
+      this.upgradeCompositionTypography(merged.xhs_modules, variant);
+      this.applyCurrentCompositionGeometry(merged.xhs_modules, variant);
       this.normalizeCompositionEmptyImages(merged.xhs_modules);
     }
     if (merged.xhs_style === "composition" && Array.isArray(merged.composition_modules_by_layout[merged.composition_variant])) {
@@ -1468,17 +1371,31 @@ class XHSCardStudioView extends ItemView {
     }
     if (!merged.xhs_modules.length && !(merged.xhs_style === "composition"
       && Array.isArray(merged.composition_modules_by_layout[merged.composition_variant]))) {
-      const savedModules = this.getStoredModulesForStyle(merged, merged.xhs_style);
+      const savedModules = ACTIVE_COVER_STYLE_IDS.has(merged.xhs_style)
+        ? this.getStoredModulesForStyle(merged, merged.xhs_style) : savedRetiredModules;
       if (savedModules.length) merged.xhs_modules = savedModules;
     }
     if (merged.xhs_style === "neon-grid" && this.isLegacyNeonDefaultModules(merged.xhs_modules)) {
       merged.xhs_modules = this.createDefaultModulesForStyle(merged.xhs_style, merged);
     }
-    if (merged.xhs_style === "ai-course" && this.isLegacyAiDefaultModules(merged.xhs_modules)) {
-      merged.xhs_modules = this.createDefaultModulesForStyle(merged.xhs_style, merged);
-    }
-    if (merged.xhs_style === "clean-gradient" && this.isLegacyCleanDefaultModules(merged.xhs_modules)) {
-      merged.xhs_modules = this.createDefaultModulesForStyle(merged.xhs_style, merged);
+    const migratedRetiredStyle = !ACTIVE_COVER_STYLE_IDS.has(merged.xhs_style);
+    if (migratedRetiredStyle) {
+      const modules = merged.xhs_modules;
+      const photo = modules.find(module => module.type === "image" && !module.custom && module.src);
+      const ids = this.getBrandModuleIds(merged.xhs_style);
+      if (!frontmatter?.title && !frontmatter?.big_title && !frontmatter?.cover_title) {
+        merged.title = modules.find(module => module.id === ids?.title)?.text || merged.title;
+      }
+      if (!frontmatter?.subtitle && !frontmatter?.cover_subtitle) {
+        merged.subtitle = modules.find(module => module.id === ids?.subtitle)?.text || merged.subtitle;
+      }
+      merged.xhs_style = DEFAULT_CONFIG.xhs_style;
+      merged.cover_layout_preset = "none";
+      merged.composition_image ||= photo?.src || this.toText(frontmatter?.main_image);
+      merged.xhs_modules = [
+        ...this.createDefaultModulesForStyle(merged.xhs_style, merged),
+        ...modules.filter(module => module.custom)
+      ];
     }
     this.ensureTemplateModules(merged);
     this.alignNeonFooterModules(merged);
@@ -1495,16 +1412,10 @@ class XHSCardStudioView extends ItemView {
       this.restoreCompositionContentFromModules(merged);
     }
 
-    if (!["neon-grid","nng-red-system","composition"].includes(merged.xhs_style)) {
-      this.saveCurrentStyleModules(merged);
-      const custom = merged.xhs_modules.filter(module=>module.custom);
-      merged.xhs_style="neon-grid";
-      merged.cover_layout_preset="none";
-      merged.xhs_modules=[...this.createDefaultModulesForStyle("neon-grid",merged),...custom];
-    }
     if(!Object.prototype.hasOwnProperty.call(frontmatter || {},"background_color") && !frontmatter?.cover_editor_version
       && !merged.cover_template_settings[this.getCoverTemplateKey(merged)])this.applyDefaultCoverAppearance(merged);
     if(frontmatter?.cover_highlight_color)merged.cover_highlight_color=this.toColor(frontmatter.cover_highlight_color,"#0071e3");
+    if (migratedRetiredStyle) this.ensureUnifiedCoverVisuals(merged);
     return merged;
   }
 
@@ -1557,47 +1468,19 @@ class XHSCardStudioView extends ItemView {
     if (description && !description.manualStyle && !description.manualFontSize && description.fontSize === 30) description.fontSize = 26;
   }
 
-  upgradeCompositionDefaultGeometry(modules, preset) {
-    if(modules?.some(module=>module.coverTextRole))return;
-    if (!Array.isArray(modules) || !preset) return;
-    const previous = [COMPOSITION_PREVIOUS_GEOMETRY[preset.id], COMPOSITION_RECENT_GEOMETRY[preset.id], COMPOSITION_LAST_GEOMETRY[preset.id], COMPOSITION_BALANCED_GEOMETRY[preset.id], COMPOSITION_ANCHOR_GEOMETRY[preset.id]]
-      .filter(Boolean);
-    const byId = new Map(modules.map((module) => [module.id, module]));
-    const update = (module, key, after, imageIndex = -1) => {
-      if (!module || !after || module.manualLayout) return false;
-      const matches = previous.some((geometry) => {
-        const before = imageIndex < 0 ? geometry[key] : geometry.images[imageIndex];
-        return before && [module.x, module.y, module.w, module.h]
-          .every((value, index) => Number(value) === before[index]);
-      });
-      if (!matches) return false;
-      [module.x, module.y, module.w, module.h] = after;
-      return true;
-    };
-    preset.images.forEach((box, index) => update(byId.get(index ? `composition-image-${index + 1}` : "composition-image"), "images", box, index));
-    const block = byId.get("composition-block");
-    const movedBlock = update(block, "block", preset.block);
-    if (movedBlock && !block.manualStyle) block.background = preset.blockColor || "var(--xhs-accent)";
-    const title = byId.get("composition-title");
-    const movedTitle = update(title, "title", preset.title);
-    const subtitle = byId.get("composition-subtitle");
-    const movedSubtitle = update(subtitle, "subtitle", preset.subtitle);
-    update(byId.get("composition-description"), "description", preset.description);
-    if (movedTitle && title && !title.manualStyle) title.textAlign = preset.titleAlign || preset.align || "left";
-    if (preset.id === "band-columns") {
-      if (movedTitle && title && !title.manualStyle) title.textAlign = "left";
-      if (movedSubtitle && subtitle && !subtitle.manualStyle) subtitle.textAlign = "left";
-    }
-    if (preset.id === "solid-poster") {
-      for (const id of ["composition-title", "composition-description"]) {
-        const module = byId.get(id);
-        if (!module || module.manualStyle) continue;
-        module.background = "transparent";
-        module.color = "#ffffff";
-        if (!(module.className || "").includes("xhs-module-composition-photo-label")) {
-          module.className = `${module.className || ""} xhs-module-composition-photo-label`.trim();
-        }
-      }
+  applyCurrentCompositionGeometry(modules, preset) {
+    if (!preset || modules.some(module => module.coverTextRole)) return;
+    const frames = new Map([
+      ["composition-block", preset.block],
+      ["composition-title", preset.title],
+      ["composition-subtitle", preset.subtitle],
+      ["composition-description", preset.description],
+      ...preset.images.map((frame, index) => [index ? `composition-image-${index + 1}` : "composition-image", frame])
+    ]);
+    for (const module of modules) {
+      const frame = frames.get(module.id);
+      if (!frame || module.custom || module.manualLayout || module.manualPosition || module.manualSize) continue;
+      [module.x, module.y, module.w, module.h] = frame;
     }
   }
 
@@ -3138,7 +3021,7 @@ class XHSCardStudioView extends ItemView {
       Object.assign(result[0],{x:72,w:776});Object.assign(result[1],{x:72,w:456});
       Object.assign(result[2],{x:552,y:1056,w:456});result.unshift(image(0,72,536,456,768));
     } else if(id==="mosaic") {
-      for(let i=0;i<8;i++)result.unshift(image(i,72+(i%3)*320,568+Math.floor(i/3)*248,296,224));
+      result.unshift(...MOSAIC_IMAGE_FRAMES.map((frame, index) => image(index, ...frame)));
     } else {
       const columnBottom=id==="band-columns" ? Math.max(subY+subLines*subLine,subY+Math.min(3,Math.max(1,String(config.composition_description || "").split(/\r?\n/).length))*descriptionLine) : subY+subLines*subLine;
       const imageY=Math.ceil((columnBottom+48)/8)*8;
@@ -3291,19 +3174,18 @@ class XHSCardStudioView extends ItemView {
     }
     const media=modules.filter(module=>module.type==="image" && !module.custom);
     if(id==="mosaic") {
-      const extra=media.slice(3);
+      const extra=media.slice(MOSAIC_IMAGE_FRAMES.length);
       if(extra.length) {
         const archive=Array.isArray(config.mosaic_image_archive)?config.mosaic_image_archive:[];
-        for(const image of extra)if(!archive.some(saved=>saved.id===image.id && saved.src===image.src))archive.push({...image});
+        for(const image of extra)if(image.src && !archive.some(saved=>saved.id===image.id && saved.src===image.src))archive.push({id:image.id,src:image.src});
         config.mosaic_image_archive=archive;
         for(let index=modules.length-1;index>=0;index--)if(extra.includes(modules[index]))modules.splice(index,1);
-        media.splice(3);
+        media.splice(MOSAIC_IMAGE_FRAMES.length);
       }
-      const mainHeight=936*9/16,secondaryHeight=456*9/16;
-      const secondaryY=72+mainHeight+24;
-      const frames=[[72,72,936,mainHeight],[72,secondaryY,456,secondaryHeight],[552,secondaryY,456,secondaryHeight]];
-      media.forEach((module,index)=>Object.assign(module,{x:frames[index][0],y:frames[index][1],
-        w:frames[index][2],h:frames[index][3],objectFit:"contain",borderRadius:0,borderWidth:0}));
+      media.forEach((module, index) => {
+        const [x, y, w, h] = MOSAIC_IMAGE_FRAMES[index];
+        Object.assign(module, { x, y, w, h, objectFit: "contain", borderRadius: 0, borderWidth: 0 });
+      });
     }
     const bottom=media.length?Math.max(...media.map(module=>module.y+module.h)):0;
     let top=media.length?Math.min(...media.map(module=>module.y)):1440;
@@ -3859,7 +3741,7 @@ class XHSCardStudioView extends ItemView {
 
   renderCoverTemplateThumbnail(parent, choice) {
     const thumbnail = parent.createSpan({ cls: "xhs-cover-template-thumb", attr: { "aria-hidden": "true" } });
-    const composition = COMPOSITION_LAST_GEOMETRY[choice.id];
+    const composition = choice.style === "composition" ? choice : null;
     const images = composition?.images || (choice.style === "nng-red-system"
       ? [[0, 0, 1080, 720], [0, 720, 1080, 720]] : []);
     const title = composition?.title || (choice.style === "nng-red-system"
@@ -5526,8 +5408,7 @@ class XHSCardStudioView extends ItemView {
     else if (baseStyle === "instagram-gradient") modules = this.createDefaultInstagramModules(config);
     else if (baseStyle === "google-search") modules = this.createDefaultGoogleModules(config);
     else modules = this.createDefaultAiModules(config);
-    const appliedModules = this.applyCoverLayoutPresetToModules(modules, layoutPresetId, config, baseStyle);
-    return this.normalizeDefaultTemplateLayout(appliedModules, baseStyle, layoutPresetId, config);
+    return this.normalizeDefaultTemplateLayout(modules, baseStyle, layoutPresetId, config);
   }
 
   createCompositionModules(config) {
@@ -5670,118 +5551,6 @@ class XHSCardStudioView extends ItemView {
     return null;
   }
 
-  applyCoverLayoutPresetToModules(modules, presetId, config = this.config, style = config.xhs_style) {
-    const preset = this.getCoverLayoutPreset(presetId);
-    if (!preset || preset.id === "none" || !Array.isArray(modules)) return modules;
-    const ids = this.getBrandModuleIds(style);
-    if (!ids) return modules;
-    const byId = new Map(modules.map((module) => [module.id, module]));
-    const bg = byId.get(ids.bg);
-    const title = byId.get(ids.title);
-    const subtitle = byId.get(ids.subtitle);
-    const rule = byId.get(ids.rule);
-    const image = byId.get(ids.image);
-    if (bg) {
-      bg.layoutPreset = preset.id;
-      bg.background = "transparent";
-      const baseClassName = (bg.className || "")
-        .replace(/\bxhs-cover-layout-bg-[^\s]+/g, "")
-        .trim();
-      bg.className = `${baseClassName} xhs-module-cover-layout-bg xhs-cover-layout-bg-${preset.id}`.trim();
-    }
-    const layout = this.getCoverLayoutGeometry(preset.id, config);
-    if (title) Object.assign(title, layout.title, { layoutPreset: preset.id, className: ids.titleClass });
-    if (subtitle) Object.assign(subtitle, layout.subtitle, {
-      layoutPreset: preset.id,
-      className: `${ids.subtitleClass} xhs-module-cover-layout-subtitle xhs-cover-subtitle-${preset.id}`.trim()
-    });
-    if (rule) Object.assign(rule, layout.rule, {
-      layoutPreset: preset.id,
-      className: `xhs-module-cover-layout-rule xhs-cover-rule-${preset.id}`
-    });
-    if (image) Object.assign(image, layout.image, {
-      layoutPreset: preset.id,
-      className: `${ids.imageClass} xhs-module-cover-layout-image`.trim()
-    });
-    this.appendCoverLayoutDecorations(modules, preset, config);
-    return modules;
-  }
-
-  getCoverLayoutGeometry(presetId, config = this.config) {
-    const titleSize = config.title_size || DEFAULT_CONFIG.title_size;
-    const subtitleSize = config.subtitle_size || DEFAULT_CONFIG.subtitle_size;
-    const common = {
-      title: { fontSize: titleSize, fontWeight: 760, lineHeight: config.title_line_height || 1.02, color: config.text_color, background: "transparent" },
-      subtitle: { fontSize: subtitleSize, fontWeight: config.subtitle_font_weight || 500, lineHeight: 1.22, color: this.getCoverSubtitleTextColor(config), background: "transparent" },
-      rule: { background: "var(--xhs-title-gradient-css)", borderRadius: 999 },
-      image: { src: config.main_image || "", objectFit: "cover", rotation: 0 }
-    };
-    const map = {
-      "ux-green": {
-        title: { x: 110, y: 315, w: 850, h: 260, textAlign: "left", fontSize: titleSize },
-        subtitle: { x: 118, y: 638, w: 760, h: 98, textAlign: "left", fontSize: subtitleSize, background: "transparent", borderRadius: 0 },
-        rule: { x: 116, y: 606, w: 720, h: 2, background: this.hexToRgba(config.accent_color || "#07945f", 0.24), borderRadius: 999 },
-        image: { x: 118, y: 865, w: 844, h: 270, borderRadius: DEFAULT_IMAGE_RADIUS, objectFit: "cover" }
-      },
-      "grid-photo-blue": {
-        title: { x: 128, y: 635, w: 790, h: 330, textAlign: "left", fontSize: titleSize, color: config.text_color || "#050505" },
-        subtitle: { x: 570, y: 1026, w: 390, h: 154, textAlign: "left", fontSize: subtitleSize, color: "#050505", background: "transparent", borderRadius: 0 },
-        rule: { x: -100, y: -100, w: 1, h: 1, background: "transparent", borderRadius: 0, rotation: 0, locked: true },
-        image: { x: 0, y: 235, w: 1080, h: 455, borderRadius: 0, objectFit: "cover" }
-      },
-      "google-omni": {
-        title: { x: 106, y: 188, w: 860, h: 290, textAlign: "left", fontSize: titleSize, fontWeight: 780 },
-        subtitle: { x: 112, y: 506, w: 820, h: 104, textAlign: "left", fontSize: subtitleSize, color: "#6e6e73", background: "transparent", borderRadius: 0 },
-        rule: { x: 116, y: 1260, w: 850, h: 1, background: "rgba(32,33,36,0.12)", borderRadius: 0 },
-        image: { x: 120, y: 690, w: 840, h: 520, borderRadius: DEFAULT_IMAGE_RADIUS, objectFit: "cover" }
-      },
-      "minimal-grid-gray": {
-        title: { x: 182, y: 310, w: 620, h: 560, textAlign: "left", fontSize: titleSize, fontWeight: 760, color: config.text_color || "#2e4150" },
-        subtitle: { x: 182, y: 1000, w: 760, h: 78, textAlign: "left", fontSize: subtitleSize, color: "#2e4150", background: "transparent", borderRadius: 0 },
-        rule: { x: -100, y: -100, w: 1, h: 1, background: "transparent", borderRadius: 0, locked: true },
-        image: { x: 706, y: 570, w: 300, h: 340, borderRadius: DEFAULT_IMAGE_RADIUS, objectFit: "cover" }
-      },
-      "hero-blue-purple": {
-        title: { x: 90, y: 258, w: 900, h: 290, textAlign: "center", fontSize: titleSize, fontWeight: 780 },
-        subtitle: { x: 250, y: 155, w: 580, h: 72, textAlign: "center", fontSize: subtitleSize, color: "#111522", background: "transparent", borderRadius: 0 },
-        rule: { x: 0, y: 82, w: 1080, h: 1, background: "rgba(109,92,255,0.18)", borderRadius: 0 },
-        image: { x: 108, y: 618, w: 972, h: 650, borderRadius: DEFAULT_IMAGE_RADIUS, objectFit: "cover" }
-      },
-      "nng-red-system": {
-        title: { x: 112, y: 760, w: 856, h: 380, textAlign: "left", fontSize: Math.min(titleSize, 112), fontWeight: 740, lineHeight: 1.08, color: config.text_color || "#050505" },
-        subtitle: { x: 112, y: 1180, w: 760, h: 104, textAlign: "left", fontSize: subtitleSize, color: "#050505", background: "transparent", borderRadius: 0 },
-        rule: { x: 112, y: 1340, w: 92, h: 2, background: "rgba(0,0,0,0.42)", borderRadius: 999 },
-        image: { x: 0, y: 0, w: 1080, h: 650, borderRadius: 0, objectFit: "cover" }
-      },
-      "saas-green-formula": {
-        title: { x: 200, y: 210, w: 680, h: 250, textAlign: "center", fontSize: titleSize, fontWeight: 720, color: config.text_color || "#08090b" },
-        subtitle: { x: 250, y: 505, w: 650, h: 72, textAlign: "center", fontSize: subtitleSize, color: "#08090b", background: "transparent", borderRadius: 0 },
-        rule: { x: -40, y: 510, w: 1160, h: 52, background: "#35f46c", borderRadius: 0, rotation: -4 },
-        image: { x: 118, y: 678, w: 844, h: 510, borderRadius: DEFAULT_IMAGE_RADIUS, objectFit: "contain" }
-      },
-      "dark-fresh-green": {
-        title: { x: 150, y: 640, w: 780, h: 132, textAlign: "center", fontSize: titleSize, fontWeight: 420, color: config.text_color || "#ffffff" },
-        subtitle: { x: 230, y: 780, w: 620, h: 72, textAlign: "center", fontSize: subtitleSize, fontWeight: 360, color: "rgba(255,255,255,0.82)", background: "transparent", borderRadius: 0 },
-        rule: { x: 490, y: 1340, w: 100, h: 2, background: "rgba(255,255,255,0.42)", borderRadius: 999 },
-        image: { x: 118, y: 112, w: 260, h: 80, borderRadius: 0, objectFit: "contain" }
-      }
-    };
-    const layout = map[presetId] || {};
-    return {
-      title: Object.assign({}, common.title, layout.title || {}),
-      subtitle: Object.assign({}, common.subtitle, layout.subtitle || {}),
-      rule: Object.assign({}, common.rule, layout.rule || {}),
-      image: Object.assign({}, common.image, layout.image || {})
-    };
-  }
-
-  appendCoverLayoutDecorations(modules, preset, config = this.config) {
-    const removeIds = new Set(["layout-kicker", "layout-cta", "layout-footer", "layout-mark"]);
-    for (let index = modules.length - 1; index >= 0; index--) {
-      if (removeIds.has(modules[index].id)) modules.splice(index, 1);
-    }
-  }
-
   normalizeDefaultTemplateLayout(modules, style, layoutPresetId, config = this.config) {
     if(config.cover_text_layout_version===1)return modules;
     if (!Array.isArray(modules)) return modules;
@@ -5813,18 +5582,6 @@ class XHSCardStudioView extends ItemView {
       const required = ["xhs-module-cover-layout-bg", `xhs-cover-layout-bg-${preset.id}`];
       bg.className = [className, ...required.filter((item) => !className.includes(item))].join(" ").trim();
     }
-    const hasImageFirstLayout = ["grid-photo-blue", "nng-red-system"].includes(presetId);
-    if (rule && ["grid-photo-blue", "minimal-grid-gray"].includes(presetId) && this.canApplyDefaultModuleLayout(rule)) {
-      Object.assign(rule, {
-        x: -100,
-        y: -100,
-        w: 1,
-        h: 1,
-        background: "transparent",
-        rotation: 0,
-        locked: true
-      });
-    }
     if (presetId === "nng-red-system") {
       if (title && this.canApplyDefaultModuleLayout(title)) {
         title.x = 112;
@@ -5854,8 +5611,8 @@ class XHSCardStudioView extends ItemView {
         rule.h = Math.max(1, Number(rule.h) || 2);
         rule.background = "rgba(0,0,0,0.42)";
       }
+      return modules;
     }
-    if (hasImageFirstLayout) return modules;
 
     const canvasHeight = Number(config.xhs_height) || 1440;
     const lowerBound = Math.max(0, canvasHeight - 70);
@@ -6580,12 +6337,6 @@ class XHSCardStudioView extends ItemView {
       cover_letter_spacing: { min: -50, max: 100 },
       title_line_height: { min: 0.6, max: 2 },
       title_letter_spacing: { min: -20, max: 80 },
-      layout_title_left: { min: 0, max: 800 },
-      layout_title_top: { min: 0, max: 1200 },
-      layout_subtitle_top: { min: 0, max: 1200 },
-      layout_tags_top: { min: 0, max: 1300 },
-      layout_small_top: { min: 0, max: 1400 },
-      layout_content_left: { min: 0, max: 800 },
       border_width: { min: 0, max: 80 },
       detail_font_size: { min: 18, max: 96 },
       detail_font_weight: { min: 100, max: 1000 },
@@ -6739,12 +6490,6 @@ class XHSCardStudioView extends ItemView {
     card.style.setProperty("--xhs-detail-image-gap", `${this.getDetailImageGap()}px`);
     card.style.setProperty("--xhs-title-letter-spacing", `${this.config.title_letter_spacing}px`);
     card.style.setProperty("--xhs-title-line-height", String(this.config.title_line_height));
-    card.style.setProperty("--xhs-title-left", `${this.config.layout_title_left}px`);
-    card.style.setProperty("--xhs-title-top", `${this.config.layout_title_top}px`);
-    card.style.setProperty("--xhs-subtitle-top", `${this.config.layout_subtitle_top}px`);
-    card.style.setProperty("--xhs-tags-top", `${this.config.layout_tags_top}px`);
-    card.style.setProperty("--xhs-small-top", `${this.config.layout_small_top}px`);
-    card.style.setProperty("--xhs-content-left", `${this.config.layout_content_left}px`);
     card.style.borderRadius = `${this.getCoverRadius()}px`;
     card.style.clipPath = `inset(0 round ${this.getCoverRadius()}px)`;
     card.style.setProperty("--xhs-border-radius", `${this.getCoverRadius()}px`);
@@ -7692,13 +7437,7 @@ class XHSCardStudioView extends ItemView {
     if (module.layoutPreset && module.type === "shape" && (module.className || "").includes("xhs-module-cover-layout-bg") && this.getCoverLayoutPreset(module.layoutPreset).id !== "none") {
       element.style.background = this.getCoverLayoutBackgroundCss(module.layoutPreset);
       element.style.overflow = "hidden";
-      if (module.layoutPreset === "ux-green") {
-        element.style.backgroundSize = "120px 120px, 120px 120px, auto, auto, auto";
-      } else if (["grid-photo-blue", "minimal-grid-gray", "saas-green-formula"].includes(module.layoutPreset)) {
-        element.style.backgroundSize = module.layoutPreset === "grid-photo-blue" ? "54px 54px, 54px 54px, auto" : "112px 112px, 112px 112px, auto";
-      } else {
-        element.style.backgroundSize = "";
-      }
+      element.style.backgroundSize = "";
     } else if (module.className === "xhs-module-glow") {
       const glowColor = this.getModuleGlowColor(module);
       element.style.setProperty("--xhs-module-glow-color", glowColor);
@@ -7808,39 +7547,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   getCoverLayoutBackgroundCss(presetId) {
-    const preset = this.getCoverLayoutPreset(presetId);
-    if (!preset || preset.id === "none") return "transparent";
-    const bg = this.config.background_color || preset.background || "#ffffff";
-    const accent = this.config.accent_color || preset.accent || "#0071e3";
-    const secondary = this.config.secondary_color || preset.secondary || "#f5f5f7";
-    if (preset.id === "ux-green") {
-      return `linear-gradient(rgba(7,148,95,0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(7,148,95,0.038) 1px, transparent 1px), radial-gradient(circle at 96% 8%, ${this.hexToRgba(accent, 0.10)}, transparent 26%), radial-gradient(circle at 4% 92%, ${this.hexToRgba(accent, 0.14)}, transparent 32%), linear-gradient(180deg, #fffdf8 0%, ${bg} 100%)`;
-    }
-    if (preset.id === "grid-photo-blue") {
-      return `linear-gradient(rgba(0,0,0,0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.12) 1px, transparent 1px), ${bg}`;
-    }
-    if (preset.id === "google-omni") {
-      return `linear-gradient(180deg, #ffffff 0%, ${bg} 100%)`;
-    }
-    if (preset.id === "minimal-grid-gray") {
-      return `linear-gradient(rgba(46,65,80,0.075) 2px, transparent 2px), linear-gradient(90deg, rgba(46,65,80,0.075) 2px, transparent 2px), ${bg}`;
-    }
-    if (preset.id === "hero-blue-purple") {
-      return `radial-gradient(circle at 8% 84%, rgba(93,162,255,0.18), transparent 30%), radial-gradient(circle at 82% 86%, rgba(180,92,255,0.16), transparent 28%), linear-gradient(180deg, ${bg} 0%, #f8fbff 100%)`;
-    }
-    if (preset.id === "nng-red-system") {
-      return this.config.background_color || '#ffffff';
-    }
-    if (preset.id === "saas-green-formula") {
-      return `linear-gradient(rgba(0,0,0,0.035) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.035) 1px, transparent 1px), linear-gradient(180deg, ${bg}, ${secondary})`;
-    }
-    if (preset.id === "dark-fresh-green") {
-      const fixedBg = preset.background || "#07090c";
-      const fixedAccent = preset.accent || "#2d8cff";
-      const fixedSecondary = preset.secondary || "#35c868";
-      return `radial-gradient(circle at 16% 88%, ${this.hexToRgba(fixedAccent, 0.42)}, transparent 34%), radial-gradient(circle at 86% 2%, ${this.hexToRgba(fixedSecondary, 0.28)}, transparent 34%), linear-gradient(180deg, #050609 0%, ${fixedBg} 58%, #04170f 100%)`;
-    }
-    return bg;
+    return this.isCoverLayoutStyle(presetId) ? this.config.background_color || "#ffffff" : "transparent";
   }
 
   renderHighlightedTitleElement(element, module) {
@@ -12485,7 +12192,7 @@ class XHSCardStudioView extends ItemView {
     const common = [
       "cover_editor_version", "cover_overlay_opacity", "cover_title_display", "cover_cutout_transparency", "cover_rule_hidden", "cover_rule_thickness",
       "cover_title_color", "cover_highlight_color", "swiss_cover_version", "cover_visual_version", "cover_solid_palette_version", "cover_typography_version", "cover_text_layout_version", "mosaic_image_archive",
-      "composition_layout", "composition_variant", "composition_theme", "composition_custom_colors", "composition_description", "composition_image", "composition_modules_by_layout", "composition_appearance_by_layout",
+      "composition_variant", "composition_theme", "composition_custom_colors", "composition_description", "composition_image", "composition_modules_by_layout", "composition_appearance_by_layout",
       "xhs_style", "xhs_width", "xhs_height", "background_color", "accent_color",
       "secondary_color", "text_color", "title_size", "title_font_weight", "subtitle_size", "body_size",
       "subtitle_font_weight", "subtitle_color_mode",
@@ -13593,89 +13300,10 @@ class XHSCardStudioView extends ItemView {
   }
 
   drawCoverLayoutBackground(ctx, x, y, width, height, presetId) {
-    const preset = this.getCoverLayoutPreset(presetId);
-    if (!preset || preset.id === "none") return false;
-    const bgColor = this.config.background_color || preset.background || "#ffffff";
-    const accentColor = this.config.accent_color || preset.accent || "#0071e3";
-    const secondaryColor = this.config.secondary_color || preset.secondary || "#f5f5f7";
-    ctx.fillStyle = bgColor;
+    if (!this.isCoverLayoutStyle(presetId)) return false;
+    ctx.fillStyle = this.getCoverLayoutBackgroundCss(presetId);
     ctx.fillRect(x, y, width, height);
-    if (preset.id === "grid-photo-blue" || preset.id === "minimal-grid-gray" || preset.id === "saas-green-formula") {
-      const step = preset.id === "grid-photo-blue" ? 54 : 112;
-      const color = preset.id === "minimal-grid-gray" ? "rgba(46,65,80,0.075)" : preset.id === "saas-green-formula" ? "rgba(0,0,0,0.035)" : "rgba(0,0,0,0.12)";
-      this.drawGrid(ctx, width, height, step, color);
-    }
-    if (preset.id === "ux-green") {
-      this.drawRadialWash(ctx, x + width * 0.96, y + height * 0.08, width * 0.34, accentColor, 0.10);
-      this.drawRadialWash(ctx, x + width * 0.04, y + height * 0.92, width * 0.38, accentColor, 0.14);
-      this.drawUxGreenBackgroundIcons(ctx, x, y, width, height, accentColor);
-    } else if (preset.id === "google-omni") {
-      ["#4285f4", "#ea4335", "#fbbc04", "#34a853"].forEach((color, index) => {
-        this.drawRadialWash(ctx, x + width * ([0.88, 0.80, 0.18, 0.72][index]), y + height * ([0.10, 0.18, 0.88, 0.78][index]), width * 0.18, color, 0.08);
-      });
-    } else if (preset.id === "hero-blue-purple") {
-      this.drawRadialWash(ctx, x + width * 0.08, y + height * 0.84, width * 0.36, accentColor, 0.18);
-      this.drawRadialWash(ctx, x + width * 0.82, y + height * 0.86, width * 0.32, secondaryColor, 0.16);
-      ctx.strokeStyle = "rgba(109,92,255,0.18)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x, y + height * 0.06);
-      ctx.lineTo(x + width, y + height * 0.06);
-      ctx.stroke();
-    } else if (preset.id === "nng-red-system") {
-      ctx.fillStyle = this.config.background_color || '#ffffff';
-      ctx.fillRect(x,y,width,height);
-    } else if (preset.id === "saas-green-formula") {
-      ctx.fillStyle = "rgba(255,255,255,0.20)";
-      for (let gx = 0; gx < width; gx += 28) {
-        const h = ((gx / 28) % 7) * 8 + 18;
-        ctx.fillRect(x + gx, y + height * 0.50 - h, 18, h);
-      }
-    } else if (preset.id === "dark-fresh-green") {
-      const fixedBg = preset.background || "#07090c";
-      const fixedAccent = preset.accent || "#2d8cff";
-      const fixedSecondary = preset.secondary || "#35c868";
-      const bg = ctx.createLinearGradient(x, y, x, y + height);
-      bg.addColorStop(0, "#050609");
-      bg.addColorStop(0.58, fixedBg);
-      bg.addColorStop(1, "#04170f");
-      ctx.fillStyle = bg;
-      ctx.fillRect(x, y, width, height);
-      this.drawRadialWash(ctx, x + width * 0.16, y + height * 0.88, width * 0.56, fixedAccent, 0.42);
-      this.drawRadialWash(ctx, x + width * 0.86, y + height * 0.02, width * 0.42, fixedSecondary, 0.28);
-    }
-    if (!["grid-photo-blue", "nng-red-system"].includes(preset.id)) {
-      this.drawSubtleGradientDither(ctx, x, y, width, height, preset.id === "dark-fresh-green" ? 0.018 : 0.010);
-    }
     return true;
-  }
-
-  drawUxGreenBackgroundIcons(ctx, x, y, width, height, accentColor) {
-    ctx.save();
-    ctx.strokeStyle = this.hexToRgba(accentColor, 0.055);
-    ctx.lineWidth = 1;
-    for (let gy = y + height * 0.18; gy < y + height * 0.92; gy += height * 0.16) {
-      ctx.beginPath();
-      ctx.moveTo(x + width * 0.08, gy);
-      ctx.lineTo(x + width * 0.92, gy);
-      ctx.stroke();
-    }
-    [x + width * 0.22, x + width * 0.74].forEach((gx) => {
-      ctx.beginPath();
-      ctx.moveTo(gx, y + height * 0.36);
-      ctx.lineTo(gx, y + height * 0.82);
-      ctx.stroke();
-    });
-
-    ctx.restore();
-  }
-
-  drawRadialWash(ctx, cx, cy, radius, color, alpha) {
-    const glow = ctx.createRadialGradient(cx, cy, 8, cx, cy, radius);
-    glow.addColorStop(0, this.hexToRgba(color, alpha));
-    glow.addColorStop(1, this.hexToRgba(color, 0));
-    ctx.fillStyle = glow;
-    ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
   }
 
   drawSubtleGradientDither(ctx, x, y, width, height, alpha = 0.012) {
