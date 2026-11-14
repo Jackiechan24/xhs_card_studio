@@ -1,0 +1,13 @@
+# Local font packages and extraction files
+/.font-tools/
+/fonts/
+
+# Local previews, export outputs, and plugin data
+/artifacts/
+/.obsidian/
+/data.json
+/data.*.json
+/node_modules/
+*.log
+.DS_Store
+Thumbs.db

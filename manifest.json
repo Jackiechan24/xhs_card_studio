@@ -1,0 +1,9 @@
+{
+  "id": "xhs-card-studio",
+  "name": "XHS Card Studio",
+  "version": "0.8.98",
+  "minAppVersion": "1.5.0",
+  "description": "Independent Obsidian studio for Xiaohongshu cover/detail PNGs with multiple templates, local images, draggable custom modules, and high-resolution export.",
+  "author": "赵同学AI",
+  "isDesktopOnly": true
+}
