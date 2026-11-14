@@ -8635,6 +8635,37 @@ class XHSCardStudioView extends ItemView {
     }
   }
 
+  markDetailStyleStructure(host, card) {
+    card?.classList.toggle("xhs-has-visual-layout", Boolean(host.closest(".xhs-detail-layout-visual")));
+    card?.classList.toggle("xhs-has-major-heading", Boolean(host.querySelector("h1,h2")));
+    host.classList.toggle("xhs-starts-with-heading", Boolean(host.querySelector(":scope > :is(h1,h2,h3,h4,h5,h6)")));
+
+    const childRules = [
+      ["ul,ol", "xhs-list-with-markers", "li > .xhs-detail-list-marker"],
+      ["li", "xhs-item-with-marker", ".xhs-detail-list-marker"],
+      [".xhs-unified-number-list > li,.xhs-module-number-list > li", "xhs-item-with-ordinal", ".xhs-module-ordinal"],
+      [".xhs-reference-item,[data-reading-continuation]", "xhs-item-with-reference-body", ".xhs-reference-body"],
+      [".xhs-reference-item", "xhs-item-with-reference-title", ".xhs-reference-item-title"],
+      [".xhs-reference-item", "xhs-item-with-reference-value", ".xhs-reference-value"],
+      [".xhs-reference-item", "xhs-item-with-reference-ordinal", ".xhs-reference-ordinal"],
+      [".xhs-reference-summary > p:first-child,blockquote.xhs-source-quote > p", "xhs-standalone-strong", "strong:only-child"],
+      [".xhs-detail-module", "xhs-module-with-major-heading", ":is(h1,h2):not([data-reading-repeat])"]
+    ];
+    for (const [selector, className, child] of childRules) {
+      for (const node of host.querySelectorAll(selector)) {
+        node.classList.toggle(className, Boolean(node.querySelector(`:scope > ${child}`)));
+      }
+    }
+    for (const node of host.querySelectorAll(".xhs-detail-module,.xhs-detail-card-group")) {
+      const next = node.nextElementSibling;
+      node.classList.toggle("xhs-before-heading-module", Boolean(next?.matches(".xhs-detail-module[data-detail-heading-level]")));
+    }
+    for (const row of host.querySelectorAll("table:not(.xhs-module-record-table,.xhs-reference-table) tr")) {
+      row.classList.toggle("xhs-two-cell-row", row.children.length === 2);
+    }
+  }
+
+
   async finalizeDetailReadingFlow(content, card, page = {}) {
     if (typeof content.querySelectorAll !== "function") return;
     let host;
@@ -8698,6 +8729,7 @@ class XHSCardStudioView extends ItemView {
       }
     }
     this.normalizeDetailAuxiliaryMarkers(host);
+    this.markDetailStyleStructure(host, card);
     if(this.config.detail_page_type==="modular" && !page.readingHtml)this.fitStandaloneDetailMedia(host,card);
     this.refreshDetailImageAnchors(card);
     content._xhsReadingAudit = this.auditDetailReadingFlow(content);
@@ -9247,6 +9279,7 @@ class XHSCardStudioView extends ItemView {
     }
     this.fitModularColumns(host);
     this.fitDetailRecordLayouts(host,card);
+    this.markDetailStyleStructure(host, card);
     this.fitDetailReferenceLayouts(host,card);
     if(signature!==this.detailContentSignature([host]))throw new Error("模块编排内容核对失败，已停止转换");
     card.dataset.detailComposition=Array.from(host.children,node=>node.dataset.detailComposition || "heading").join(" ");
@@ -10997,6 +11030,7 @@ class XHSCardStudioView extends ItemView {
         const fits = () => {
           this.ensureDetailContinuationContext(host);
           if(this.config.detail_page_type==="modular")this.applyDetailPageHierarchy(host);
+          this.markDetailStyleStructure(host, card);
           const boundary = this.getDetailPaginationBottom(card);
           return Array.from(host.querySelectorAll("h1,h2,h3,h4,h5,h6,p,li,table,pre,[data-detail-image-slot],[data-detail-module],[data-detail-composition]"))
             .every(node => node.getBoundingClientRect().bottom <= boundary + 0.5);
@@ -11053,6 +11087,7 @@ class XHSCardStudioView extends ItemView {
           const current=Array.from(host.children);
           const capacity=root.getBoundingClientRect().height-reserve;
           host.replaceChildren(node);
+          this.markDetailStyleStructure(host, card);
           const protectedNodes=new Set(Array.from(node.querySelectorAll('li,.xhs-reference-item')).filter(item=>item.getBoundingClientRect().height<=capacity*.5));
           if(node.matches('li,.xhs-reference-item') && node.getBoundingClientRect().height<=capacity*.5)protectedNodes.add(node);
           const oversized=!fits();
