@@ -1,5 +1,27 @@
 # XHS Card Studio
 
+Create Xiaohongshu covers and detail cards from Markdown notes. Choose an editable cover template, add images and highlights, and export individual cards or all pages as high-resolution PNG files.
+
+## Installation
+
+- **Community plugins**. In Obsidian desktop, open **Settings → Community plugins → Browse**, search for **XHS Card Studio**, then select **Install** and **Enable** once the listing is available.
+- **Manual installation**. Download `main.js`, `manifest.json`, and `styles.css` from the same [GitHub release](https://github.com/Jackiechan24/xhs_card_studio/releases). Put them in `.obsidian/plugins/xhs-card-studio/` inside your vault, reload Obsidian, and enable the plugin under **Community plugins**.
+
+## Usage
+
+1. Open a Markdown note. Click the image icon in the left ribbon or run **打开小红书图文工作台** from the command palette to open the studio.
+2. Choose a cover template under **封面模板**, enter your title and other cover text, and double-click an image frame to import an image.
+3. Use the navigation buttons below the preview to see the detail cards generated from your note. In the detail view, choose a page style and font size.
+4. Select **导出当前页到本地** to export the current page or **导出全部到本地** to export all pages. Filenames start with the preview page number followed by the page title.
+
+The interface is in Simplified Chinese. Try the [example note](example-note.md) to see a cover and multiple detail pages.
+
+### File access and network use
+
+The plugin reads the active note, its properties, and referenced vault images. It copies images selected in the file picker into the vault and saves export files to the location you choose. **保存参数到笔记** writes layout settings to the note properties. If your note or cover uses an HTTP(S) image, preview or export may request that image from the host in its URL. Layout and PNG generation run locally.
+
+## 中文使用说明
+
 把 Obsidian 笔记排成小红书图文。用封面模板配置标题、配色和图片，再将 Markdown 正文排成详情页。支持预览、单页导出和批量导出 PNG。
 
 ## 快速开始
