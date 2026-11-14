@@ -3,7 +3,13 @@ name: Publish plugin release
 on:
   push:
     tags:
-      - '[0-9]*.[0-9]*.[0-9]*'
+      - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing release tag
+        required: true
+        type: string
 
 permissions: {}
 
@@ -15,14 +21,17 @@ jobs:
       id-token: write
       attestations: write
       artifact-metadata: write
+    env:
+      RELEASE_VERSION: ${{ inputs.version || github.ref_name }}
     steps:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+          ref: refs/tags/${{ inputs.version || github.ref_name }}
       - name: Check release files
         run: |
           node --check main.js
-          node -e 'const { version } = require("./manifest.json"); if (version !== process.env.GITHUB_REF_NAME) throw new Error("Tag must match manifest version");'
+          node -e 'const { version } = require("./manifest.json"); if (version !== process.env.RELEASE_VERSION) throw new Error("Tag must match manifest version");'
           test -s styles.css
       - name: Attest release files
         uses: actions/attest@v4
@@ -34,4 +43,5 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" main.js manifest.json styles.css --verify-tag --title "XHS Card Studio $GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$RELEASE_VERSION" main.js manifest.json styles.css --verify-tag --title "XHS Card Studio $RELEASE_VERSION" --generate-notes
+
