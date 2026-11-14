@@ -22,132 +22,102 @@ const DEFAULT_SETTINGS = {
   drafts: {}
 };
 
-const STYLE_PRESETS = [
-  { id: "neon-grid", name: "杂志风格" },
-  { id: "clean-gradient", name: "Apple风格" },
-  { id: "huawei-product", name: "华为风格" },
-  { id: "instagram-gradient", name: "Ins风格" },
-  { id: "google-search", name: "Google风格" },
-  { id: "composition", name: "构图排版" },
-  { id: "ux-green", name: "UX 绿白" },
-  { id: "grid-photo-blue", name: "网格蓝图" },
-  { id: "google-omni", name: "Google 信息" },
-  { id: "minimal-grid-gray", name: "极简灰网" },
-  { id: "hero-blue-purple", name: "Hero 蓝紫" },
-  { id: "nng-red-system", name: "上下对比型" },
-  { id: "saas-green-formula", name: "SaaS 绿带" },
-  { id: "dark-fresh-green", name: "暗色鲜绿" }
-];
+// Saved notes may still reference these legacy cover styles by ID.
+const BRAND_COVER_STYLE_IDS = new Set([
+  "clean-gradient", "huawei-product", "instagram-gradient", "google-search"
+]);
+
+const ACTIVE_COVER_STYLE_IDS = new Set(["composition", "neon-grid", "nng-red-system"]);
 
 const COVER_LAYOUT_PRESETS = [
   {
     id: "none",
-    name: "保留当前",
     background: "",
     accent: "",
     secondary: "",
     text: "",
     gradientFrom: "",
-    gradientTo: "",
-    colors: ["#f5f5f7", "#1d1d1f", "#0071e3"]
+    gradientTo: ""
   },
   {
     id: "ux-green",
-    name: "UX 绿白",
     background: "#fbfaf6",
     accent: "#07945f",
     secondary: "#e8f6ed",
     text: "#111820",
     gradientFrom: "#06945f",
-    gradientTo: "#18b46d",
-    colors: ["#fbfaf6", "#111820", "#07945f", "#dff4e8"],
-    kind: "ux-green"
+    gradientTo: "#18b46d"
   },
   {
     id: "grid-photo-blue",
-    name: "网格蓝图",
     background: "#ffffff",
     accent: "#171f77",
     secondary: "#e8ecff",
     text: "#050505",
     gradientFrom: "#ffffff",
-    gradientTo: "#171f77",
-    colors: ["#ffffff", "#050505", "#171f77", "#e4e4e4"],
-    kind: "grid-photo-blue"
+    gradientTo: "#171f77"
   },
   {
     id: "google-omni",
-    name: "Google 信息",
     background: "#ffffff",
     accent: "#4285f4",
     secondary: "#f8fafd",
     text: "#202124",
     gradientFrom: "#4285f4",
-    gradientTo: "#34a853",
-    colors: ["#ffffff", "#202124", "#4285f4", "#ea4335", "#fbbc04", "#34a853"],
-    kind: "google-omni"
+    gradientTo: "#34a853"
   },
   {
     id: "minimal-grid-gray",
-    name: "极简灰网",
     background: "#f2f4f4",
     accent: "#2e4150",
     secondary: "#e8ecec",
     text: "#2a3a46",
     gradientFrom: "#2e4150",
-    gradientTo: "#9da8ad",
-    colors: ["#f2f4f4", "#2e4150", "#ffffff", "#dfe5e6"],
-    kind: "minimal-grid-gray"
+    gradientTo: "#9da8ad"
   },
   {
     id: "hero-blue-purple",
-    name: "Hero 蓝紫",
     background: "#eef4ff",
     accent: "#5da2ff",
     secondary: "#b45cff",
     text: "#111522",
     gradientFrom: "#5da2ff",
-    gradientTo: "#b45cff",
-    colors: ["#eef4ff", "#111522", "#5da2ff", "#6d5cff", "#b45cff"],
-    kind: "hero-blue-purple"
+    gradientTo: "#b45cff"
   },
   {
     id: "nng-red-system",
-    name: "上下对比型",
     background: "#8d252b",
     accent: "#fdb88c",
     secondary: "#f2aff3",
     text: "#050505",
     gradientFrom: "#fdb88c",
-    gradientTo: "#f2aff3",
-    colors: ["#8d252b", "#fdb88c", "#f2aff3", "#ffffff", "#050505"],
-    kind: "nng-red-system"
+    gradientTo: "#f2aff3"
   },
   {
     id: "saas-green-formula",
-    name: "SaaS 绿带",
     background: "#eef0f0",
     accent: "#35f46c",
     secondary: "#dfe4e4",
     text: "#08090b",
     gradientFrom: "#35f46c",
-    gradientTo: "#14c95a",
-    colors: ["#eef0f0", "#08090b", "#35f46c", "#cfd6d6"],
-    kind: "saas-green-formula"
+    gradientTo: "#14c95a"
   },
   {
     id: "dark-fresh-green",
-    name: "暗色鲜绿",
     background: "#07090c",
     accent: "#2d8cff",
     secondary: "#35c868",
     text: "#ffffff",
     gradientFrom: "#2d8cff",
-    gradientTo: "#35c868",
-    colors: ["#07090c", "#ffffff", "#2d8cff", "#35c868"],
-    kind: "dark-fresh-green"
+    gradientTo: "#35c868"
   }
 ];
+
+function isSupportedCoverStyle(id) {
+  return ACTIVE_COVER_STYLE_IDS.has(id)
+    || BRAND_COVER_STYLE_IDS.has(id)
+    || (id !== "none" && COVER_LAYOUT_PRESETS.some(preset => preset.id === id));
+}
 
 const CLEAN_GRADIENT_PALETTES = [
   {
@@ -1053,7 +1023,7 @@ function removeReferenceLayoutConfig(config) {
   }
   if (config.xhs_style === "editorial-ai") {
     const candidates = Object.keys(config.xhs_modules_by_style || {}).filter((style) =>
-      STYLE_PRESETS.some((preset) => preset.id === style));
+      isSupportedCoverStyle(style));
     const previousStyle = candidates[candidates.length - 1] || DEFAULT_CONFIG.xhs_style;
     config.xhs_style = previousStyle;
     config.xhs_modules = config.xhs_modules_by_style?.[previousStyle] || [];
@@ -1288,7 +1258,7 @@ class XHSCardStudioView extends ItemView {
     merged.cover_layout_preset = COVER_LAYOUT_PRESETS.some((preset) => preset.id === merged.cover_layout_preset)
       ? merged.cover_layout_preset
       : DEFAULT_CONFIG.cover_layout_preset;
-    merged.xhs_style = STYLE_PRESETS.some((style) => style.id === merged.xhs_style)
+    merged.xhs_style = isSupportedCoverStyle(merged.xhs_style)
       ? merged.xhs_style
       : (this.isCoverLayoutStyle(merged.cover_layout_preset) ? merged.cover_layout_preset : DEFAULT_CONFIG.xhs_style);
     if (!this.isCoverLayoutStyle(merged.xhs_style) && this.isCoverLayoutStyle(merged.cover_layout_preset)) {
@@ -4313,50 +4283,6 @@ class XHSCardStudioView extends ItemView {
       button.createDiv({ cls: "xhs-clean-palette-name", text: palette.name });
       button.addEventListener("click", () => {
         this.applyCleanPalette(palette.id);
-      });
-    });
-  }
-
-  renderStylePresetControls() {
-    const field = this.createField("风格");
-    const row = field.createDiv({ cls: "xhs-style-preset-row xhs-text-color-style-row" });
-    const swatches = {
-      "neon-grid": ["#020404", "#08e6cf"],
-      "clean-gradient": ["#f5f5f7", "#0071e3"],
-      "huawei-product": ["#f6f3ec", "#c8a45d"],
-      "instagram-gradient": ["#fff7fb", "#d62976"],
-      "google-search": ["#ffffff", "#4285f4", "#ea4335", "#fbbc04", "#34a853"]
-    };
-    STYLE_PRESETS.forEach((style) => {
-      const layoutPreset = this.getCoverLayoutPreset(style.id);
-      const colors = this.isCoverLayoutStyle(style.id)
-        ? layoutPreset.colors
-        : (swatches[style.id] || ["#ffffff", "#1d1d1f"]);
-      const button = row.createEl("button", {
-        cls: `xhs-text-color-style-button xhs-style-preset-button is-gradient${this.config.xhs_style === style.id ? " is-active" : ""}`,
-        attr: { type: "button" }
-      });
-      button.style.setProperty("--text-style-gradient", this.getGradientCssFromStops(colors));
-      button.createSpan({ cls: "xhs-text-color-style-swatch" });
-      button.createSpan({ cls: "xhs-text-color-style-name", text: style.name });
-      button.addEventListener("click", () => {
-        if (this.config.xhs_style === style.id) return;
-        this.saveCurrentStyleModules();
-        this.config.xhs_style = style.id;
-        this.config.cover_layout_preset = this.isCoverLayoutStyle(style.id) ? style.id : DEFAULT_CONFIG.cover_layout_preset;
-        this.selectedModuleId = "";
-        this.applyStyleDefaultColors(this.config.xhs_style);
-        if (style.id === "composition") this.restoreCompositionAppearance(this.config);
-        this.config.xhs_modules = this.loadModulesForStyle(this.config.xhs_style, this.config);
-        if (style.id === "composition") {
-          this.restoreCompositionContentFromModules();
-          this.syncCompositionOverlayColors();
-        } else {
-          this.syncCurrentTextToModules();
-        }
-        this.selectedModuleId = this.getDefaultSelectedModuleId(this.config.xhs_style);
-        this.persistDraft();
-        void this.render();
       });
     });
   }
