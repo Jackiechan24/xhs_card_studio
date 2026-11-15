@@ -12,6 +12,10 @@ const {
 
 const VIEW_TYPE = "xhs-card-studio-view";
 const DEFAULT_IMAGE_RADIUS = 0;
+const DEFAULT_CORNER_FRAME_COLOR = "#1d1d1f";
+const DEFAULT_OUTLINE_LABEL_COLOR = "#0071e3";
+const DEFAULT_PILL_LABEL_COLOR = "#1d1d1f";
+const CUSTOM_PILL_BORDER_STOPS = ["#0071e3", "#a653ff", "#ff7700"];
 const HUAWEI_DETAIL_BACKGROUND = "#eaf7ff";
 const HUAWEI_DETAIL_BACKGROUND_TOP = "#fbfdff";
 const HUAWEI_DETAIL_BACKGROUND_BOTTOM = "#d7edff";
@@ -938,6 +942,15 @@ class XHSCardStudioPlugin extends Plugin {
       if (migrated) await this.saveSettings();
     }
 
+    this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
+      if (!(file instanceof TFile) || file.extension !== "md") return;
+      const drafts = this.settings.drafts;
+      if (!drafts || !Object.prototype.hasOwnProperty.call(drafts, oldPath)) return;
+      drafts[file.path] = drafts[oldPath];
+      delete drafts[oldPath];
+      void this.saveSettings().catch(error => console.error("[XHS Cards] 保存重命名后的草稿失败", error));
+    }));
+
     this.registerView(VIEW_TYPE, (leaf) => new XHSCardStudioView(leaf, this));
 
     this.addRibbonIcon("image", "小红书图文工作台", () => this.activateView()).classList.add("xhs-studio-ribbon");
@@ -1001,16 +1014,25 @@ class XHSCardStudioView extends ItemView {
     this.bodyEl = this.containerEl.createDiv({ cls: "xhs-studio-body" });
     this.controlsEl = this.bodyEl.createDiv({ cls: "xhs-studio-controls" });
     this.previewShellEl = this.bodyEl.createDiv({ cls: "xhs-studio-preview-shell" });
+    this.previewShellEl.addEventListener("click", (event) => {
+      if (event.target.closest?.(".xhs-edit-module, .xhs-detail-image-wrap, .xhs-canvas-toolbar, .xhs-preview-pager, .xhs-cover-comparison-tools")) return;
+      this.clearPreviewSelection();
+    });
 
     this.renderToolbar();
     this.observeStudioViewport();
     await this.reloadFromActiveFile();
 
-    this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
-      this.queueReloadFromActiveFile(50);
+    this.registerEvent(this.app.workspace.on("file-open", (file) => {
+      if (file instanceof TFile && file.extension === "md") {
+        this.queueNoteReload(file, 50);
+      }
     }));
-    this.registerEvent(this.app.metadataCache.on("changed", () => {
-      this.queueReloadFromActiveFile(180);
+    this.registerEvent(this.app.metadataCache.on("changed", (file) => {
+      if (file.path !== this.activeFile?.path) return;
+      const pending = this.queuedNote || this.loadingNote?.file;
+      if (pending && pending.path !== file.path) return;
+      this.queueNoteReload(file, 180, true);
     }));
   }
 
@@ -1088,21 +1110,28 @@ class XHSCardStudioView extends ItemView {
     return file instanceof TFile && file.extension === "md" ? file : null;
   }
 
-  queueReloadFromActiveFile(delay) {
+  queueNoteReload(file, delay, preserveCover = false) {
+    if (!preserveCover && file.path === this.activeFile?.path && !this.queuedNote) return;
     window.clearTimeout(this.reloadDebounceTimer);
-    this.reloadDebounceTimer=window.setTimeout(()=>{
-      this.reloadDebounceTimer=null;
-      void this.reloadFromActiveFile().catch(error=>{
+    const version = ++this.reloadVersion;
+    this.queuedNote = file;
+    this.reloadDebounceTimer = window.setTimeout(() => {
+      this.reloadDebounceTimer = null;
+      this.queuedNote = null;
+      if (version !== this.reloadVersion) return;
+      const request = { file };
+      this.loadingNote = request;
+      void this.reloadFromActiveFile(file, preserveCover).catch(error => {
         console.error('[XHS Cards]',error);
         new Notice(`预览更新失败：${error.message || error}`);
+      }).finally(() => {
+        if (this.loadingNote === request) this.loadingNote = null;
       });
     },delay);
   }
 
-  async reloadFromActiveFile() {
-    const file = this.getActiveMarkdownFile() || this.activeFile;
+  async reloadFromActiveFile(file = this.getActiveMarkdownFile() || this.activeFile, preserveCover = false) {
     const version = ++this.reloadVersion;
-
     if (!file) {
       this.controlsEl.empty();
       this.previewShellEl.empty();
@@ -1121,10 +1150,18 @@ class XHSCardStudioView extends ItemView {
     const previousPath = this.activeFile?.path;
     if (previousPath && previousPath !== file.path) {
       this.pageIndexByFile.set(previousPath, this.activePageIndex);
+      this.selectedModuleId = "";
+      this.selectedDetailImageKey = "";
     }
     this.activeFile = file;
     this.imageCache.clear();
-    this.config = this.normalizeConfig(Object.assign({}, frontmatter, draft), file.basename);
+    if (!preserveCover || previousPath !== file.path) {
+      const config = { ...frontmatter, ...draft };
+      if (!["title", "big_title", "cover_title"].some(key => Object.prototype.hasOwnProperty.call(config, key))) {
+        config.title = file.basename;
+      }
+      this.config = this.normalizeConfig(config, file.basename);
+    }
     const sourcePages = this.buildPages(markdown);
     this.detailSourcePages = sourcePages.slice(1);
     // Same-note navigation still targets the displayed pages until pagination commits.
@@ -1563,7 +1600,7 @@ class XHSCardStudioView extends ItemView {
     if (style === "composition") {
       const savedLayout = config.composition_modules_by_layout?.[config.composition_variant];
       if (Array.isArray(savedLayout)) return this.cloneModules(savedLayout);
-      return this.createCompositionModules({ ...config, ...COMPOSITION_DEFAULT_CONTENT, composition_image: "" });
+      return this.createCompositionModules({ ...config, composition_image: "" });
     }
     const saved = this.getStoredModulesForStyle(config, style);
     if (saved.length) return saved;
@@ -3574,7 +3611,7 @@ class XHSCardStudioView extends ItemView {
     this.ensureUnifiedCoverVisuals();
     this.syncCurrentTextToModules();
     this.syncUnifiedCoverContent(true);
-    this.selectedModuleId = this.getDefaultSelectedModuleId(choice.style);
+    this.selectedModuleId = "";
     this.persistDraft();
     void this.render();
   }
@@ -3588,7 +3625,7 @@ class XHSCardStudioView extends ItemView {
     this.config.xhs_modules=this.createDefaultModulesForStyle(this.config.xhs_style,this.config);
     this.ensureUnifiedCoverVisuals();this.syncUnifiedCoverContent();
     for(const m of this.config.xhs_modules.filter(m=>m.type==='image')){m.src='';m.objectFit='contain';}
-    this.selectedModuleId=this.getDefaultSelectedModuleId(this.config.xhs_style);
+    this.selectedModuleId="";
     this.persistDraft();void this.render();
   }
 
@@ -3812,19 +3849,7 @@ class XHSCardStudioView extends ItemView {
       const colors = this.createCoverColorGroup("自定义颜色");
       this.addUnifiedCoverColor("背景色", "background_color", "", syncPresets, colors);
       this.addUnifiedCoverColor("辅助色", "secondary_color", "", syncPresets, colors);
-      return;
     }
-    const glow = this.config.xhs_modules.find(module => module.id === "glow");
-    if (!glow) return;
-    const slider = this.createField("发光强度").createEl("input", { attr: {
-      type: "range", min: "0", max: "1", step: "0.05", "aria-label": "发光强度"
-    } });
-    slider.value = String(glow.opacity ?? 1);
-    slider.addEventListener("input", () => {
-      glow.opacity = Number(slider.value);
-      this.persistDraft();
-      void this.renderPreview();
-    });
   }
 
   renderCoverTextColors() {
@@ -4896,9 +4921,6 @@ class XHSCardStudioView extends ItemView {
   }
 
   renderModuleLibrary() {
-    this.controlsEl.style.setProperty("--xhs-accent", this.config.accent_color);
-    this.controlsEl.style.setProperty("--xhs-text", this.config.text_color);
-    this.controlsEl.style.setProperty("--xhs-title-gradient-css", this.getGradientCssFromStops(this.getTitleGradientStops()));
     const groups = [
       {
         title: "图片",
@@ -4929,8 +4951,17 @@ class XHSCardStudioView extends ItemView {
           cls: `xhs-module-preset xhs-preset-${preset}`,
           attr: { type: "button", "aria-label": label }
         });
-        button.createSpan({ cls: "xhs-module-preset-icon", text: label,
+        const module = this.createCustomModulePreset(preset);
+        this.ensureCenteredLabelModuleSize(module);
+        const icon = button.createSpan({ cls: "xhs-module-preset-icon", text: label,
           attr: { "aria-hidden": "true" } });
+        icon.style.aspectRatio = module.w + " / " + module.h;
+        if (this.isCenteredLabelModule(module)) {
+          icon.style.color = this.resolveCssModuleColor(module.color);
+          icon.style.borderWidth = Math.max(1, this.getCenteredLabelBorderWidth(module) * 112 / module.w) + "px";
+          if (this.isPillLabelModule(module)) icon.style.setProperty("--xhs-pill-preview-gradient", "linear-gradient(90deg, " + CUSTOM_PILL_BORDER_STOPS.join(", ") + ")");
+        }
+        if (preset === "corner-frame") this.applyCornerFrameStyles(icon, module, 112 / module.w);
         button.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -4980,22 +5011,22 @@ class XHSCardStudioView extends ItemView {
       "image-logo": { ...common, name: "Logo", type: "image", role: "logo", x: 820, y: 92, w: 120, h: 120, objectFit: "contain", className: "xhs-module-custom-image" },
       "image-icon2": { ...common, name: "图标", type: "image", role: "icon2", x: 820, y: 235, w: 120, h: 120, objectFit: "contain", className: "xhs-module-custom-image" },
       "label-solid": { ...common, ...textCommon, name: "青色标签", background: "var(--xhs-accent)", className: "xhs-module-label-badge" },
-      "label-outline": { ...common, ...textCommon, name: "描边标签", text: "描边标签", color: this.config.accent_color, background: "transparent", className: "xhs-module-label-outline" },
+      "label-outline": { ...common, ...textCommon, name: "描边标签", text: "描边标签", color: DEFAULT_OUTLINE_LABEL_COLOR, background: "transparent", className: "xhs-module-label-outline" },
       "label-pill": {
         ...common,
         ...textCommon,
         name: "胶囊标签",
         text: "胶囊标签",
-        color: this.config.text_color,
+        color: DEFAULT_PILL_LABEL_COLOR,
         background: "transparent",
         borderRadius: 999,
         borderWidth: 2,
         borderMode: "gradient",
-        borderColor: "var(--xhs-accent)",
+        borderColor: DEFAULT_PILL_LABEL_COLOR,
         className: "xhs-module-label-pill"
       },
       "highlight-strip": { ...common, name: "高亮条", type: "shape", x: 140, y: 820, w: 520, h: 42, background: "var(--xhs-accent)", borderRadius: 0, opacity: 1, className: "xhs-module-highlight-strip" },
-      "corner-frame": { ...common, name: "角标框", type: "shape", x: 140, y: 760, w: 360, h: 180, background: "var(--xhs-secondary)", borderRadius: 0, className: "xhs-module-corner-frame" },
+      "corner-frame": { ...common, name: "角标框", type: "shape", x: 140, y: 760, w: 360, h: 180, borderColor: DEFAULT_CORNER_FRAME_COLOR, className: "xhs-module-corner-frame" },
       dot: { ...common, name: "强调圆点", type: "shape", x: 180, y: 760, w: 96, h: 96, background: "var(--xhs-accent)", borderRadius: 0, className: "xhs-module-dot-shape" },
       "glass-panel": { ...common, name: "玻璃面板", type: "shape", x: 118, y: 360, w: 830, h: 300, background: "rgba(255,255,255,0.16)", borderRadius: 0, opacity: 1, className: "xhs-module-glass-panel" },
       "soft-shadow": { ...common, name: "柔光阴影", type: "shape", x: 560, y: 1110, w: 300, h: 74, background: "rgba(0,0,0,0.48)", borderRadius: 0, opacity: 1, className: "xhs-module-soft-shadow" },
@@ -5060,7 +5091,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   getSelectedModule() {
-    return this.config.xhs_modules.find((module) => module.id === this.selectedModuleId) || this.config.xhs_modules[0] || null;
+    return this.config.xhs_modules.find((module) => module.id === this.selectedModuleId) || null;
   }
 
   getModuleLabel(module) {
@@ -6649,6 +6680,15 @@ class XHSCardStudioView extends ItemView {
       trackingTools.createDiv({ cls: "xhs-canvas-toolbar-value", text: String(selected.letterSpacing || 0), attr: { "data-selected-style-value": "letterSpacing" } });
       this.makeCanvasToolButton(trackingTools, "+", () => this.adjustSelectedNumber("letterSpacing", 1, -50, 100));
     }
+    if (selected.className === "xhs-module-corner-frame") {
+      const colors = settings.createDiv({ cls: "xhs-cover-tool-group",
+        attr: { role: "group", "aria-label": "角标框颜色" } });
+      colors.createSpan({ cls: "xhs-canvas-toolbar-label", text: "颜色" });
+      const custom = colors.createEl("input", { cls: "xhs-canvas-text-color", type: "color",
+        attr: { "aria-label": "自定义角标框颜色" } });
+      custom.value = this.getCornerFrameColor(selected);
+      custom.addEventListener("change", () => this.updateSelectedModule({ borderColor: custom.value }));
+    }
     if (this.isLineModule(selected)) {
       const lineTools = settings.createDiv({ cls: "xhs-cover-tool-group" });
       [["h", "粗细", 1, 200]].forEach(([key,label,min,max]) => {
@@ -7037,6 +7077,20 @@ class XHSCardStudioView extends ItemView {
     return true;
   }
 
+  clearPreviewSelection() {
+    const hadCoverSelection = Boolean(this.selectedModuleId);
+    const hadDetailSelection = Boolean(this.selectedDetailImageKey);
+    this.selectedModuleId = "";
+    this.selectedDetailImageKey = "";
+    if (hadCoverSelection) this.refreshCoverSelectionUi();
+    if (hadDetailSelection) {
+      this.previewCanvasEl?.querySelectorAll(".xhs-detail-image-wrap.is-selected").forEach((element) => {
+        element.classList.remove("is-selected");
+      });
+    }
+    if ((hadCoverSelection || hadDetailSelection) && this.previewCanvasEl) this.clearAlignmentGuides(this.previewCanvasEl);
+  }
+
   selectCoverModule(moduleId) {
     if (!moduleId) return;
     this.selectedModuleId = moduleId;
@@ -7048,6 +7102,8 @@ class XHSCardStudioView extends ItemView {
     const nextIndex = Math.min(Math.max(index, 0), this.pages.length - 1);
     if (nextIndex === this.activePageIndex) return;
     this.activePageIndex = nextIndex;
+    this.selectedModuleId = "";
+    this.selectedDetailImageKey = "";
     if (this.activeFile) this.pageIndexByFile.set(this.activeFile.path, nextIndex);
     void this.renderPreview();
   }
@@ -7170,9 +7226,6 @@ class XHSCardStudioView extends ItemView {
       this.config.xhs_modules = this.createDefaultModulesForStyle(this.config.xhs_style, this.config);
     }
     this.alignNeonFooterModules(this.config);
-    if (!this.selectedModuleId && this.config.xhs_modules.length) {
-      this.selectedModuleId = "big-title";
-    }
     this.config.xhs_modules.forEach((module) => this.renderEditableModule(card, module, images));
   }
 
@@ -7180,9 +7233,6 @@ class XHSCardStudioView extends ItemView {
     this.addImage(card, images.background, "xhs-bg-img");
     if (this.config.xhs_modules.length === 0) {
       this.config.xhs_modules = this.createDefaultModulesForStyle(this.config.xhs_style, this.config);
-    }
-    if (!this.selectedModuleId && this.config.xhs_modules.length) {
-      this.selectedModuleId = "clean-title";
     }
     this.config.xhs_modules.forEach((module) => this.renderEditableModule(card, module, images));
   }
@@ -7192,9 +7242,6 @@ class XHSCardStudioView extends ItemView {
     if (this.config.xhs_modules.length === 0) {
       this.config.xhs_modules = this.createDefaultModulesForStyle(this.config.xhs_style, this.config);
     }
-    if (!this.selectedModuleId && this.config.xhs_modules.length) {
-      this.selectedModuleId = "huawei-title";
-    }
     this.config.xhs_modules.forEach((module) => this.renderEditableModule(card, module, images));
   }
 
@@ -7202,9 +7249,6 @@ class XHSCardStudioView extends ItemView {
     this.addImage(card, images.background, "xhs-bg-img");
     if (this.config.xhs_modules.length === 0) {
       this.config.xhs_modules = this.createDefaultModulesForStyle(this.config.xhs_style, this.config);
-    }
-    if (!this.selectedModuleId && this.config.xhs_modules.length) {
-      this.selectedModuleId = "instagram-title";
     }
     this.config.xhs_modules.forEach((module) => this.renderEditableModule(card, module, images));
   }
@@ -7214,9 +7258,6 @@ class XHSCardStudioView extends ItemView {
     if (this.config.xhs_modules.length === 0) {
       this.config.xhs_modules = this.createDefaultModulesForStyle(this.config.xhs_style, this.config);
     }
-    if (!this.selectedModuleId && this.config.xhs_modules.length) {
-      this.selectedModuleId = this.getDefaultSelectedModuleId(this.config.xhs_style);
-    }
     this.config.xhs_modules.forEach((module) => this.renderEditableModule(card, module, images));
   }
 
@@ -7225,10 +7266,6 @@ class XHSCardStudioView extends ItemView {
       && !Array.isArray(this.config.composition_modules_by_layout?.[this.config.composition_variant])) {
       this.config.xhs_modules = this.loadModulesForStyle("composition", this.config);
       this.restoreCompositionContentFromModules();
-    }
-    if (!this.selectedModuleId && this.config.xhs_modules.length) {
-      this.selectedModuleId = this.config.xhs_modules.some((module) => module.id === "composition-title")
-        ? "composition-title" : this.config.xhs_modules[0].id;
     }
     this.syncCompositionOverlayColors();
     this.config.xhs_modules.forEach((module) => this.renderEditableModule(card, module, images));
@@ -7456,6 +7493,8 @@ class XHSCardStudioView extends ItemView {
       element.style.background = module.background;
     }
 
+    if (module.className === "xhs-module-corner-frame") this.applyCornerFrameStyles(element, module);
+
     if (this.isPillLabelModule(module)) {
       const borderWidth = Math.max(1, Number(module.borderWidth) || 2);
       const borderMode = module.borderMode || "gradient";
@@ -7559,6 +7598,23 @@ class XHSCardStudioView extends ItemView {
       element.style.textAlignLast=module.textAlign || 'left';
       element.style.textShadow="none";element.style.webkitTextStroke="0";
     }
+  }
+
+  getCornerFrameColor(module) {
+    return this.parseCoverHexColor(module.borderColor) || DEFAULT_CORNER_FRAME_COLOR;
+  }
+
+  getCornerFrameMetrics(module) {
+    const arm = Math.min(72, module.w * 0.34, module.h * 0.42);
+    return { arm, stroke: Math.min(6, arm) };
+  }
+
+  applyCornerFrameStyles(element, module, scale = 1) {
+    const { arm, stroke } = this.getCornerFrameMetrics(module);
+    element.style.setProperty("--xhs-corner-color", this.getCornerFrameColor(module));
+    element.style.setProperty("--xhs-corner-arm-x", 100 * arm / module.w + "%");
+    element.style.setProperty("--xhs-corner-arm-y", 100 * arm / module.h + "%");
+    element.style.setProperty("--xhs-corner-stroke", stroke * scale + "px");
   }
 
   moduleUsesCssBackground(module) {
@@ -7912,6 +7968,7 @@ class XHSCardStudioView extends ItemView {
       element.style.top = `${module.y}px`;
       element.style.width = `${module.w}px`;
       element.style.height = `${module.h}px`;
+      if (module.className === "xhs-module-corner-frame") this.applyCornerFrameStyles(element, module);
       if(module.coverTextRole) {
         this.layoutCoverText();
         card.querySelectorAll("[data-module-id]").forEach(node=>{
@@ -8031,9 +8088,6 @@ class XHSCardStudioView extends ItemView {
     this.addImage(card, images.background, "xhs-bg-img");
     if (this.config.xhs_modules.length === 0 || !this.config.xhs_modules.some((module) => module.id === "ai-title")) {
       this.config.xhs_modules = this.createDefaultAiModules(this.config);
-    }
-    if (!this.selectedModuleId && this.config.xhs_modules.length) {
-      this.selectedModuleId = "ai-title";
     }
     this.config.xhs_modules.forEach((module) => this.renderEditableModule(card, module, images));
   }
@@ -13785,17 +13839,13 @@ class XHSCardStudioView extends ItemView {
       return;
     }
     if (module.className === "xhs-module-corner-frame") {
-      ctx.strokeStyle = this.config.secondary_color;
-      ctx.lineWidth = 6;
-      const l = Math.min(82, module.w * 0.34, module.h * 0.42);
-      ctx.beginPath();
-      ctx.moveTo(module.x, module.y + l);
-      ctx.lineTo(module.x, module.y);
-      ctx.lineTo(module.x + l, module.y);
-      ctx.moveTo(module.x + module.w - l, module.y + module.h);
-      ctx.lineTo(module.x + module.w, module.y + module.h);
-      ctx.lineTo(module.x + module.w, module.y + module.h - l);
-      ctx.stroke();
+      const { x, y, w, h } = module;
+      const { arm, stroke } = this.getCornerFrameMetrics(module);
+      ctx.fillStyle = this.getCornerFrameColor(module);
+      ctx.fillRect(x, y, arm, stroke);
+      ctx.fillRect(x, y, stroke, arm);
+      ctx.fillRect(x + w - arm, y + h - stroke, arm, stroke);
+      ctx.fillRect(x + w - stroke, y + h - arm, stroke, arm);
       return;
     }
     if (module.className === "xhs-module-glass-panel") {
@@ -13994,7 +14044,7 @@ class XHSCardStudioView extends ItemView {
     const bufferCtx = buffer.getContext("2d");
     if (!bufferCtx) return null;
     bufferCtx.fillStyle = (module.borderMode || "gradient") === "gradient"
-      ? this.createTextGradient(bufferCtx, 0, 0, width)
+      ? this.createTextGradient(bufferCtx, 0, 0, width, module.custom ? CUSTOM_PILL_BORDER_STOPS : undefined)
       : this.resolveModuleFill(module.borderColor || module.color || "var(--xhs-accent)");
     this.roundRectPath(bufferCtx, 0, 0, width, height, outerRadius);
     bufferCtx.fill();
@@ -14021,7 +14071,7 @@ class XHSCardStudioView extends ItemView {
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     ctx.strokeStyle = (module.borderMode || "gradient") === "gradient"
-      ? this.createTextGradient(ctx, module.x, module.y, width)
+      ? this.createTextGradient(ctx, module.x, module.y, width, module.custom ? CUSTOM_PILL_BORDER_STOPS : undefined)
       : this.resolveModuleFill(module.borderColor || module.color || "var(--xhs-accent)");
     ctx.lineWidth = borderWidth;
     this.roundRectPath(ctx, module.x + borderWidth / 2, module.y + borderWidth / 2, width - borderWidth, height - borderWidth, outerRadius);
@@ -14073,9 +14123,8 @@ class XHSCardStudioView extends ItemView {
     return CONTENT_FONT_STACK;
   }
 
-  createTextGradient(ctx, x, y, width) {
+  createTextGradient(ctx, x, y, width, stops = this.getTitleGradientStops()) {
     const gradient = ctx.createLinearGradient(x, y, x + width, y);
-    const stops = this.getTitleGradientStops();
     const last = Math.max(1, stops.length - 1);
     stops.forEach((color, index) => {
       gradient.addColorStop(index / last, color);
@@ -14439,7 +14488,7 @@ class XHSCardStudioView extends ItemView {
       ctx.shadowColor = "rgba(29,29,31,0.18)";
       ctx.shadowBlur = 42;
       ctx.shadowOffsetY = 24;
-    } else if (className.includes("xhs-module-ai-main") || className.includes("xhs-module-custom-image")) {
+    } else if (className.includes("xhs-module-ai-main")) {
       ctx.shadowColor = "rgba(0,0,0,0.42)";
       ctx.shadowBlur = 34;
       ctx.shadowOffsetY = 22;
@@ -14513,7 +14562,7 @@ class XHSCardStudioView extends ItemView {
     if(module?.coverTextRole)return module.fontSize;
     if(module?.swissCover)return module.fontSize;
     const original = Number(module?.fontSize) || 32;
-    if (module?.template !== "composition" || module.type !== "text") return original;
+    if (module?.template !== "composition" || module.type !== "text" || this.isCenteredLabelModule(module)) return original;
     if (module.manualFontSize && !this.shouldPreserveManualTextLines(module)) return original;
     const preferred = Math.max(12, original);
     const content = this.toText(module.text);
