@@ -3464,6 +3464,11 @@ class XHSCardStudioView extends ItemView {
     backdrop.querySelectorAll('.xhs-cutout-raster').forEach(n=>n.remove());backdrop.style.background='transparent';
     backdrop.createEl('img',{cls:'xhs-cutout-raster',attr:{src:dataUrl,alt:''}});
     element.classList.add('xhs-cutout-title');
+    for (const textElement of [element, ...element.querySelectorAll("*")]) {
+      for (const property of ["color", "-webkit-text-fill-color", "background-image", "text-shadow"]) {
+        textElement.style.removeProperty(property);
+      }
+    }
     this.coverCutoutRaster={moduleId:panel.id,dataUrl};
   }
 
@@ -7446,7 +7451,7 @@ class XHSCardStudioView extends ItemView {
       element.style.setProperty("--xhs-module-glow-edge", this.hexToRgba(glowColor, 0.055));
       element.style.background = "transparent";
       element.style.overflow = "visible";
-    } else if (module.background) {
+    } else if (module.background && !this.moduleUsesCssBackground(module)) {
       element.style.background = module.background;
     }
 
@@ -7465,7 +7470,7 @@ class XHSCardStudioView extends ItemView {
       }
     }
 
-    if (module.className === "xhs-module-google-subtitle") {
+    if (module.className === "xhs-module-google-subtitle" && !module.coverTextRole) {
       element.style.border = "1px solid rgba(218,220,224,0.95)";
       element.style.boxShadow = "0 2px 8px rgba(60,64,67,0.08), 0 12px 28px rgba(60,64,67,0.08)";
     }
@@ -7522,7 +7527,8 @@ class XHSCardStudioView extends ItemView {
 
     if (module.type === "image") {
       element.style.background = module.background || "transparent";
-      element.style.overflow = "visible";
+      element.style.overflow = module.swissCover || module.className === "xhs-module-composition-image"
+        ? "hidden" : "visible";
       element.style.setProperty("--xhs-image-radius", `${module.borderRadius || 0}px`);
     }
     if(module.swissCover && module.type==="text") {
@@ -7532,6 +7538,10 @@ class XHSCardStudioView extends ItemView {
     if(this.config.cover_visual_version===2 && module.type==="text") {
       element.style.whiteSpace="pre-wrap";element.style.wordBreak="normal";
       element.style.overflowWrap="anywhere";element.style.overflow="visible";
+      if (module.className === "xhs-module-footer") {
+        element.style.whiteSpace = "pre";
+        element.style.overflowWrap = "normal";
+      }
     }
     if(module.coverTextRole) {
       element.classList.add("xhs-cover-structured-text");element.dataset.coverTextRole=module.coverTextRole;
@@ -7539,11 +7549,20 @@ class XHSCardStudioView extends ItemView {
       element.style.setProperty("--xhs-cover-text-tracking",`${module.letterSpacing}px`);
       element.style.setProperty("--xhs-cover-frame-padding",`${this.getCoverTextFramePadding(module)}px`);
       element.style.padding=`${this.getCoverTextFramePadding(module)}px`;element.style.boxSizing="border-box";element.style.display="block";
-      element.style.whiteSpace="pre-wrap";element.style.wordBreak="normal";element.style.overflowWrap="normal";
+      element.style.whiteSpace = "pre-wrap";
+      element.style.wordBreak = "normal";
+      element.style.overflowWrap = module.coverTextRole === "subtitle"
+        || (module.coverTextRole === "title" && this.config.xhs_style !== "composition")
+        ? "anywhere" : "normal";
       element.style.textWrap=module.coverTextRole==="title"?"balance":"wrap";
       element.style.textAlignLast=module.textAlign || 'left';
       element.style.textShadow="none";element.style.webkitTextStroke="0";
     }
+  }
+
+  moduleUsesCssBackground(module) {
+    return ["xhs-module-corner-frame", "xhs-module-glass-panel", "xhs-module-soft-shadow",
+      "xhs-module-light-spot", "xhs-module-dashed-line", "xhs-module-speech-bubble"].includes(module.className);
   }
 
   getCoverLayoutBackgroundCss(presetId) {
