@@ -3385,12 +3385,30 @@ class XHSCardStudioView extends ItemView {
       m.h=m.text?measured.height:0;
       m.maxLines=Math.max(m.coverTextRole==='title'?3:2,measured.lines);
     }
-    const visible=roles.filter(m=>m.text),height=visible.reduce((sum,m)=>sum+m.h,0)+Math.max(0,visible.length-1)*32;
-    let y=Math.max(104,720-height/2);
-    for(const m of roles){if(!m.manualPosition)m.y=y;if(m.text)y=m.y+m.h+32;}
-    const backdrop=modules.find(m=>m.id==='comparison-backdrop');
-    this.layoutCoverBackdrop(config,backdrop,roles,720);
+    const visible = roles.filter(module => module.text.trim());
+    const height = visible.reduce((sum, module) => sum + module.h, 0) + Math.max(0, visible.length - 1) * 32;
+    let y = Math.max(72, 720 - height / 2);
+    for (const module of roles) {
+      if (!module.manualPosition) module.y = y;
+      this.constrainCoverTextModuleToSafeArea(module);
+      if (visible.includes(module)) y += module.h + 32;
+    }
+    this.layoutComparisonBackdrop(config);
     config.title_size=roles[0].fontSize;config.subtitle_size=roles[1].fontSize;
+  }
+
+  layoutComparisonBackdrop(config) {
+    const backdrop = config.xhs_modules.find(module => module.id === "comparison-backdrop");
+    const text = config.xhs_modules.filter(module => module.coverTextRole && module.text.trim());
+    if (!text.length) {
+      this.setCoverBackdrop(config, backdrop, 0, 0, false);
+      return backdrop;
+    }
+    const padding = 32;
+    const top = Math.max(0, Math.floor(Math.min(...text.map(module => module.y)) - padding));
+    const bottom = Math.min(config.xhs_height, Math.ceil(Math.max(...text.map(module => module.y + module.h)) + padding));
+    this.setCoverBackdrop(config, backdrop, top, bottom - top, true);
+    return backdrop;
   }
 
   layoutHeadlineCover(config,title,subtitle,description,media,color) {
@@ -3426,7 +3444,7 @@ class XHSCardStudioView extends ItemView {
     config.title_size=title.fontSize;config.subtitle_size=subtitle.fontSize;
   }
 
-  layoutCoverBackdrop(config,backdrop,roles,centerY=null) {
+  layoutCoverBackdrop(config,backdrop,roles) {
     const width=1080;
     const x=(1080-width)/2,visible=roles.filter(m=>String(m.text || '').trim());
     let nextY=visible[0]?.y || 104;
@@ -3439,11 +3457,15 @@ class XHSCardStudioView extends ItemView {
     const textTop=visible.length?Math.min(...visible.map(m=>m.y)):nextY;
     const textBottom=visible.length?Math.max(...visible.map(m=>m.y+m.h)):nextY;
     const height=textBottom-textTop+64;
-    const y=Math.max(40,Math.min(1400-height,centerY==null?textTop-32:centerY-height/2));
+    const y=Math.max(40,Math.min(1400-height,textTop-32));
     const shift=y+32-textTop;
     visible.forEach(m=>m.y+=shift);
+    this.setCoverBackdrop(config, backdrop, y, height, visible.length > 0);
+  }
+
+  setCoverBackdrop(config, backdrop, y, height, hasText) {
     const opacity=Math.max(0,Math.min(100,Math.round(Number(config.cover_overlay_opacity??70)/10)*10));
-    Object.assign(backdrop,{x,y,w:width,h:height,background:visible.length?`rgba(255, 255, 255, ${this.isTransparentCoverTitle(config)?1:opacity/100})`:'transparent',
+    Object.assign(backdrop,{x:0,y,w:1080,h:height,background:hasText?`rgba(255, 255, 255, ${this.isTransparentCoverTitle(config)?1:opacity/100})`:'transparent',
       opacity:1,borderRadius:0,borderWidth:0,locked:true,className:'xhs-cover-text-backdrop'});
   }
 
@@ -3469,7 +3491,7 @@ class XHSCardStudioView extends ItemView {
     return config.cover_title_display==='cutout' && ['solid-poster','center-banner','nng-red-system'].includes(id);
   }
 
-  renderTransparentCoverTitle(card) {
+  renderTransparentCoverTitle(card, { scale = 3 } = {}) {
     this.coverCutoutRaster=null;
     if(!this.isTransparentCoverTitle())return;
     const title=this.config.xhs_modules.find(m=>m.coverTextRole==='title');
@@ -3477,7 +3499,7 @@ class XHSCardStudioView extends ItemView {
     if(!title?.text || !panel)return;
     const element=card.querySelector(`[data-module-id="${title.id}"]`),backdrop=card.querySelector(`[data-module-id="${panel.id}"]`);
     if(!element || !backdrop)return;
-    const canvas=document.createElement('canvas'),scale=3;
+    const canvas=document.createElement('canvas');
     canvas.width=Math.ceil(panel.w*scale);canvas.height=Math.ceil(panel.h*scale);
     const ctx=canvas.getContext('2d');ctx.scale(scale,scale);ctx.fillStyle='#ffffff';ctx.fillRect(0,0,panel.w,panel.h);
     ctx.globalCompositeOperation='destination-out';ctx.globalAlpha=Math.max(0,Math.min(100,this.config.cover_cutout_transparency??100))/100;
@@ -5069,6 +5091,14 @@ class XHSCardStudioView extends ItemView {
 
   isPillLabelModule(module) {
     return module && module.type === "text" && /\bxhs-module-(label-pill|layout-pill)\b/.test(module.className || "");
+  }
+
+  getCustomCoverLayer(module) {
+    if (!module.custom) return 0;
+    if (module.type === "text" && /\bxhs-module-label-(badge|outline|pill)\b/.test(module.className || "")) return 12;
+    if (module.className === "xhs-module-corner-frame") return 10;
+    if (module.type === "image") return 8;
+    return 0;
   }
 
   isCenteredLabelModule(module) {
@@ -7027,7 +7057,8 @@ class XHSCardStudioView extends ItemView {
 
   isCoverSafeTextModule(module) {
     return this.isCoverTitleModule(module) || this.isCoverSubtitleModule(module)
-      || (module?.template === "composition" && module.type === "text");
+      || (module?.template === "composition" && module.type === "text")
+      || (module?.template === "nng-red-system" && Boolean(module.coverTextRole));
   }
 
   constrainCoverTextModuleToSafeArea(module) {
@@ -7047,7 +7078,8 @@ class XHSCardStudioView extends ItemView {
     const maxWidth = Math.max(1, canvasWidth - margin * 2);
     const previous = { x: module.x, y: module.y, w: module.w };
     module.w = Math.min(Math.max(module.coverTextRole ? 33 : 1, Number(module.w) || maxWidth), maxWidth);
-    module.x = Math.max(margin, Math.min(Number(module.x) || margin, canvasWidth - margin - module.w));
+    const horizontalMargin = module.template === "nng-red-system" && module.coverTextRole && module.manualPosition ? 0 : margin;
+    module.x = Math.max(horizontalMargin, Math.min(Number(module.x) || horizontalMargin, canvasWidth - horizontalMargin - module.w));
     module.y = Math.max(margin, Number(module.y) || margin);
     if(module.coverTextRole && module.manualPosition)module.y=Math.max(margin,Math.min(module.y,(Number(this.config.xhs_height)||1440)-margin-(module.h||0)));
     return previous.x !== module.x || previous.y !== module.y || previous.w !== module.w;
@@ -7337,6 +7369,8 @@ class XHSCardStudioView extends ItemView {
       attr: { "data-module-id": module.id }
     });
     this.applyModuleStyle(element, module);
+    const customLayer = this.getCustomCoverLayer(module);
+    if (customLayer) element.style.zIndex = String(customLayer);
 
     if (module.type === "text") {
       if (this.isCoverTitleModule(module)) {
@@ -7881,20 +7915,37 @@ class XHSCardStudioView extends ItemView {
     const startModuleY = module.y;
     const subtitlePanel = this.isMagazineSubtitle(module)
       ? card.querySelector('[data-module-id="magazine-subtitle-panel"]') : null;
+    const backdropElement = module.template === "nng-red-system" && module.coverTextRole
+      ? card.querySelector('[data-module-id="comparison-backdrop"]') : null;
     element.setPointerCapture(event.pointerId);
 
     const move = (moveEvent) => {
+      const previousX = module.x;
+      const previousY = module.y;
       module.x = Math.round(startModuleX + (moveEvent.clientX - startX) / scale);
       module.y = Math.round(startModuleY + (moveEvent.clientY - startY) / scale);
       module.manualPosition = true;
       module.manualLayout = true;
       this.updateAlignmentGuides(card, module, true);
+      module.x = Math.round(module.x);
+      module.y = Math.round(module.y);
       this.constrainCoverTextModuleToSafeArea(module);
       element.style.left = `${module.x}px`;
       element.style.top = `${module.y}px`;
       if (subtitlePanel) {
         subtitlePanel.style.left = element.style.left;
         subtitlePanel.style.top = element.style.top;
+      }
+      if (backdropElement) {
+        const previousTop = backdropElement.offsetTop;
+        const previousHeight = backdropElement.offsetHeight;
+        const backdrop = this.layoutComparisonBackdrop(this.config);
+        backdropElement.style.top = backdrop.y + "px";
+        backdropElement.style.height = backdrop.h + "px";
+        const titleMoved = module.coverTextRole === "title" && (module.x !== previousX || module.y !== previousY);
+        if (titleMoved || backdrop.y !== previousTop || backdrop.h !== previousHeight) {
+          this.renderTransparentCoverTitle(card, { scale: 1 });
+        }
       }
     };
     const up = () => {
@@ -7975,6 +8026,7 @@ class XHSCardStudioView extends ItemView {
           const item=this.config.xhs_modules.find(candidate=>candidate.id===node.dataset.moduleId);
           if(item)this.applyModuleStyle(node,item);
         });
+        if (module.template === "nng-red-system") this.renderTransparentCoverTitle(card, { scale: 1 });
       }
       this.updateAlignmentGuides(card, module, false);
     };
@@ -12848,7 +12900,8 @@ class XHSCardStudioView extends ItemView {
     const modules = Array.isArray(this.config.xhs_modules) ? this.config.xhs_modules : [];
     this.alignNeonFooterModules(this.config);
     await this.drawTemplateBase(ctx, images, modules);
-    for (const module of modules) {
+    const ordered = [...modules].sort((a, b) => this.getCustomCoverLayer(a) - this.getCustomCoverLayer(b));
+    for (const module of ordered) {
       await this.drawCanvasModule(ctx, module, images);
     }
     ctx.restore();

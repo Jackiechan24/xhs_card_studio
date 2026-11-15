@@ -4432,6 +4432,7 @@
 }
 .xhs-cover-text-grid .xhs-cover-text-backdrop {
   z-index: 4;
+  pointer-events: none;
   border: 0;
   border-radius: 0;
   box-shadow: none;
