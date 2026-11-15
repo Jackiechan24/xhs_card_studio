@@ -43,5 +43,5 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$RELEASE_VERSION" main.js manifest.json styles.css --verify-tag --title "XHS Card Studio $RELEASE_VERSION" --generate-notes
+        run: gh release create "$RELEASE_VERSION" main.js manifest.json styles.css --verify-tag --title "XHS Cards $RELEASE_VERSION" --generate-notes
 

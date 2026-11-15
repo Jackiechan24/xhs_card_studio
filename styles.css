@@ -244,15 +244,6 @@
   height: 30px;
 }
 
-.xhs-module-preset-label {
-  width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 10px;
-  text-align: center;
-}
-
 .xhs-preset-label-solid .xhs-module-preset-icon,
 .xhs-preset-highlight-strip .xhs-module-preset-icon {
   border-radius: 8px;
@@ -6915,10 +6906,19 @@
 .xhs-cover-template-option .xhs-cover-template-thumb { width: 20px; height: 27px; }
 .xhs-cover-template-name { min-width: 0; font-size: 12px; line-height: 1.35; }
 
-.xhs-cover-gradient-colors { grid-column: 1 / -1; min-inline-size: 0; margin: 0; padding: 0; border: 0; }
-.xhs-cover-gradient-colors legend { margin-bottom: 6px; padding: 0; font-size: 12px; font-weight: 650; }
-.xhs-cover-custom-color-grid,
-.xhs-cover-gradient-pair {
+.xhs-cover-color-group {
+  min-inline-size: 0;
+  margin: 10px 0 12px;
+  padding: 8px;
+  border: 1px solid var(--xhs-ui-silver, #e5e5ea);
+  border-radius: 12px;
+}
+.xhs-cover-color-group legend {
+  padding-inline: 4px;
+  font-size: inherit;
+  font-weight: 650;
+}
+.xhs-cover-custom-color-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 8px;
@@ -7093,17 +7093,37 @@
   box-shadow: none;
   font-weight: 500;
 }
-.xhs-studio-root .xhs-studio-controls .xhs-module-preset {
-  height: auto;
-  min-height: 74px;
-  border-radius: 12px;
-}
 .xhs-studio-root .xhs-studio-controls .xhs-module-library-grid {
   display: flex;
   flex-wrap: wrap;
 }
 .xhs-studio-root .xhs-studio-controls .xhs-module-preset {
-  flex: 0 0 88px;
+  flex: 0 1 128px;
+  max-inline-size: 100%;
+  height: auto;
+  min-height: 66px;
+  padding: 6px;
+  border-radius: 12px;
+}
+.xhs-studio-root .xhs-studio-controls .xhs-module-preset-icon {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 48px;
+  padding-inline: 5px;
+  color: var(--xhs-ui-ink);
+  font-size: var(--xhs-ui-text-size);
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+.xhs-studio-root .xhs-studio-controls .xhs-preset-label-outline .xhs-module-preset-icon {
+  color: var(--xhs-ui-accent);
+}
+.xhs-studio-root .xhs-studio-controls .xhs-preset-label-pill .xhs-module-preset-icon {
+  background: linear-gradient(var(--xhs-ui-paper), var(--xhs-ui-paper)) padding-box,
+    var(--xhs-title-gradient-css, linear-gradient(110deg, #0071e3, #a653ff, #ff7700)) border-box;
 }
 .xhs-studio-root .xhs-studio-controls .xhs-preset-corner-frame .xhs-module-preset-icon {
   --xhs-secondary: var(--xhs-ui-ink);
@@ -7147,7 +7167,7 @@
   color: var(--xhs-ui-muted);
   font-size: var(--xhs-ui-text-size);
 }
-.xhs-studio-root .xhs-studio-controls :is(.xhs-cover-template-name, .xhs-cover-color-name, .xhs-module-preset-label) {
+.xhs-studio-root .xhs-studio-controls :is(.xhs-cover-template-name, .xhs-cover-color-name) {
   font-size: inherit;
   line-height: 1.3;
 }

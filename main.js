@@ -1033,7 +1033,7 @@ class XHSCardStudioView extends ItemView {
       this.controlsVisibleOverride=this.controlsEl.classList.contains('is-controls-hidden');
       this.syncStudioViewport();
     });
-    heading.createDiv({ cls: "xhs-studio-title", text: "XHS Card Studio" });
+    heading.createDiv({ cls: "xhs-studio-title", text: "XHS Cards" });
     const actions = this.toolbarEl.createDiv({ cls: "xhs-studio-actions" });
     this.makeButton(actions, "读取当前笔记", () => this.reloadFromActiveFile()).title = "重新读取当前 Markdown 笔记的正文和配置，刷新预览";
     this.makeButton(actions, "保存参数到笔记", () => this.saveConfigToFrontmatter()).title = "把当前排版配置写入笔记顶部的属性";
@@ -1074,7 +1074,7 @@ class XHSCardStudioView extends ItemView {
       try {
         await onClick();
       } catch (error) {
-        console.error("[XHS Card Studio]", error);
+        console.error("[XHS Cards]", error);
         new Notice(`操作失败：${error.message || error}`);
       } finally {
         button.disabled = false;
@@ -1093,7 +1093,7 @@ class XHSCardStudioView extends ItemView {
     this.reloadDebounceTimer=window.setTimeout(()=>{
       this.reloadDebounceTimer=null;
       void this.reloadFromActiveFile().catch(error=>{
-        console.error('[XHS Card Studio]',error);
+        console.error('[XHS Cards]',error);
         new Notice(`预览更新失败：${error.message || error}`);
       });
     },delay);
@@ -3809,8 +3809,7 @@ class XHSCardStudioView extends ItemView {
           button.setAttribute("aria-pressed", String(active));
         }
       };
-      this.controlsEl.createEl("h3", { cls: "xhs-cover-palette-heading", text: "自定义颜色" });
-      const colors = this.controlsEl.createDiv({ cls: "xhs-cover-custom-color-grid" });
+      const colors = this.createCoverColorGroup("自定义颜色");
       this.addUnifiedCoverColor("背景色", "background_color", "", syncPresets, colors);
       this.addUnifiedCoverColor("辅助色", "secondary_color", "", syncPresets, colors);
       return;
@@ -3848,19 +3847,22 @@ class XHSCardStudioView extends ItemView {
       }
     };
 
-    this.controlsEl.createEl("h3", { cls: "xhs-cover-palette-heading", text: "自定义颜色" });
-    const colors = this.controlsEl.createDiv({ cls: "xhs-cover-custom-color-grid" });
+    const colors = this.createCoverColorGroup("自定义颜色");
     this.addUnifiedCoverColor("主标题纯色", "cover_title_color", "", syncPreset, colors);
     this.addUnifiedCoverColor("副标题", "", "subtitle", undefined, colors);
     this.addUnifiedCoverColor("说明文案", "", "description", undefined, colors);
     this.addUnifiedCoverColor("高亮字", "cover_highlight_color", "", undefined, colors);
     if (gradients.length) {
-      const gradient = colors.createEl("fieldset", { cls: "xhs-cover-gradient-colors" });
-      gradient.createEl("legend", { text: "主标题渐变色" });
-      const pair = gradient.createDiv({ cls: "xhs-cover-gradient-pair" });
+      const pair = this.createCoverColorGroup("主标题渐变色");
       this.addUnifiedCoverColor("渐变起点", "title_gradient_from", "", syncPreset, pair);
       this.addUnifiedCoverColor("渐变终点", "title_gradient_to", "", syncPreset, pair);
     }
+  }
+
+  createCoverColorGroup(label) {
+    const group = this.controlsEl.createEl("fieldset", { cls: "xhs-cover-color-group" });
+    group.createEl("legend", { text: label });
+    return group.createDiv({ cls: "xhs-cover-custom-color-grid" });
   }
 
   addUnifiedCoverColor(label,key,role="",onChange,parent=this.controlsEl) {
@@ -4925,12 +4927,10 @@ class XHSCardStudioView extends ItemView {
       group.items.forEach(([label, preset]) => {
         const button = grid.createEl("button", {
           cls: `xhs-module-preset xhs-preset-${preset}`,
-          attr: { type: "button" }
+          attr: { type: "button", "aria-label": label }
         });
-        button.createDiv({ cls: "xhs-module-preset-icon",
-          text: ["label-outline", "label-pill"].includes(preset) ? "标签" : "",
+        button.createSpan({ cls: "xhs-module-preset-icon", text: label,
           attr: { "aria-hidden": "true" } });
-        button.createDiv({ cls: "xhs-module-preset-label", text: label });
         button.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -4980,11 +4980,12 @@ class XHSCardStudioView extends ItemView {
       "image-logo": { ...common, name: "Logo", type: "image", role: "logo", x: 820, y: 92, w: 120, h: 120, objectFit: "contain", className: "xhs-module-custom-image" },
       "image-icon2": { ...common, name: "图标", type: "image", role: "icon2", x: 820, y: 235, w: 120, h: 120, objectFit: "contain", className: "xhs-module-custom-image" },
       "label-solid": { ...common, ...textCommon, name: "青色标签", background: "var(--xhs-accent)", className: "xhs-module-label-badge" },
-      "label-outline": { ...common, ...textCommon, name: "描边标签", color: this.config.accent_color, background: "transparent", className: "xhs-module-label-outline" },
+      "label-outline": { ...common, ...textCommon, name: "描边标签", text: "描边标签", color: this.config.accent_color, background: "transparent", className: "xhs-module-label-outline" },
       "label-pill": {
         ...common,
         ...textCommon,
         name: "胶囊标签",
+        text: "胶囊标签",
         color: this.config.text_color,
         background: "transparent",
         borderRadius: 999,
@@ -7696,7 +7697,7 @@ class XHSCardStudioView extends ItemView {
       }
       if (persist) this.persistDraft();
     } catch (error) {
-      console.error("[XHS Card Studio] 图片比例读取失败", error);
+      console.error("[XHS Cards] 图片比例读取失败", error);
     }
   }
 
@@ -12473,15 +12474,15 @@ class XHSCardStudioView extends ItemView {
     } catch (error) {
       const page = this.pages[this.activePageIndex];
       if (page?.kind === "detail") {
-        console.error("[XHS Card Studio] 详情页图片导出失败", error);
+        console.error("[XHS Cards] 详情页图片导出失败", error);
         new Notice("详情页图片导出失败，请重试；不会导出另一套排版。" );
         return;
       }
-      console.warn("[XHS Card Studio] 预览节点导出失败，改用画布导出", error);
+      console.warn("[XHS Cards] 预览节点导出失败，改用画布导出", error);
       try {
         blob = await this.renderCanvasBlob(scale);
       } catch (canvasError) {
-        console.error("[XHS Card Studio] 导出失败", canvasError);
+        console.error("[XHS Cards] 导出失败", canvasError);
         new Notice(`导出失败：${canvasError && canvasError.message ? canvasError.message : "PNG 生成异常"}`);
         return;
       }
@@ -12612,7 +12613,7 @@ class XHSCardStudioView extends ItemView {
         const blob = await response.blob();
         img.setAttribute("src", await this.blobToDataUrl(blob));
       } catch (error) {
-        console.error("[XHS Card Studio] 图片内联到预览导出失败", error);
+        console.error("[XHS Cards] 图片内联到预览导出失败", error);
       }
     }));
   }
@@ -13496,7 +13497,7 @@ class XHSCardStudioView extends ItemView {
         const bgImage = await this.loadImage(images.background);
         this.drawObjectFitImage(ctx, bgImage, 0, 0, width, height, "cover");
       } catch (error) {
-        console.error("[XHS Card Studio] 背景图导出失败", error);
+        console.error("[XHS Cards] 背景图导出失败", error);
       }
     }
 
@@ -14896,7 +14897,7 @@ class XHSCardStudioSettingTab extends PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "XHS Card Studio" });
+    containerEl.createEl("h2", { text: "XHS Cards" });
 
     new Setting(containerEl)
       .setName("图片素材目录")

@@ -1,10 +1,10 @@
-# XHS Card Studio
+# XHS Cards（小红卡）
 
 Create Xiaohongshu covers and detail cards from Markdown notes. Choose an editable cover template, add images and highlights, and export individual cards or all pages as high-resolution PNG files.
 
 ## Installation
 
-- **Community plugins**. In Obsidian desktop, open **Settings → Community plugins → Browse**, search for **XHS Card Studio**, then select **Install** and **Enable** once the listing is available.
+- **Community plugins**. In Obsidian desktop, open **Settings → Community plugins → Browse**, search for **XHS Cards**, then select **Install** and **Enable**.
 - **Manual installation**. Download `main.js`, `manifest.json`, and `styles.css` from the same [GitHub release](https://github.com/Jackiechan24/xhs_card_studio/releases). Put them in `.obsidian/plugins/xhs-card-studio/` inside your vault, reload Obsidian, and enable the plugin under **Community plugins**.
 
 ## Usage
@@ -26,7 +26,7 @@ The plugin reads the active note, its properties, and referenced vault images. I
 
 ## 快速开始
 
-1. 安装并启用插件。手动安装时，将 `main.js`、`manifest.json` 和 `styles.css` 放入知识库的 `.obsidian/plugins/xhs-card-studio/`，然后在 Obsidian 的「第三方插件」中启用 XHS Card Studio。当前版本仅支持桌面端。
+1. 安装并启用插件。手动安装时，将 `main.js`、`manifest.json` 和 `styles.css` 放入知识库的 `.obsidian/plugins/xhs-card-studio/`，然后在 Obsidian 的「第三方插件」中启用 XHS Cards。当前版本仅支持桌面端。
 2. 打开一篇 Markdown 笔记，点击左侧功能区的图片图标，或在命令面板搜索「打开小红书图文工作台」。工作台默认在右侧栏打开，可用工作台左上角的按钮显示或隐藏设置。
 3. 在封面页选择模板、填写文案，双击画布上的图片框上传图片。可以用 [示例笔记](example-note.md) 体验完整流程。
 4. 用预览下方的「首页」、上一页和下一页按钮切换页面。左侧设置会随封面和详情页切换。
@@ -72,4 +72,4 @@ The plugin reads the active note, its properties, and referenced vault images. I
 
 ## 许可证
 
-XHS Card Studio 的插件代码和项目文档采用 [MIT 许可证](LICENSE)。著作权声明为 © 赵同学AI。SF Pro 字体及其安装包适用 Apple 的许可条款。 [Apple 字体许可](https://developer.apple.com/fonts/)
+XHS Cards 的插件代码和项目文档采用 [MIT 许可证](LICENSE)。著作权声明为 © 赵同学AI。SF Pro 字体及其安装包适用 Apple 的许可条款。 [Apple 字体许可](https://developer.apple.com/fonts/)
