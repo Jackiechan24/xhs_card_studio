@@ -4,7 +4,7 @@
 
 用一篇已有的教程、工作复盘或学习笔记做底稿，在同一个工作台完成封面编辑、正文分页和图片导出。
 
-![XHS Cards 工作台，左侧是 Obsidian 笔记，右侧是成品封面](docs/readme/cover-editor.png)
+[![XHS Cards 工作台，左侧是 Obsidian 笔记，右侧是成品封面](docs/readme/cover-editor.png)](docs/readme/cover-editor.png)
 
 ## 产品特点
 
@@ -26,9 +26,16 @@
 
 [示例笔记](example-note.md)展示了如何从打开笔记开始，完成封面、正文分页和 PNG 导出。
 
-<img src="docs/readme/04-markdown-cards.png" width="400" alt="模块化详情页的导出示例，Markdown 编号列表被排成三张步骤卡">
-
-完整流程：[打开笔记](docs/readme/02-open-note.png) · [制作封面](docs/readme/03-make-cover.png) · [排版正文](docs/readme/04-markdown-cards.png) · [检查并导出](docs/readme/05-export.png)
+<table>
+  <tr>
+    <td align="center"><strong>打开笔记</strong><br><a href="docs/readme/02-open-note.png"><img src="docs/readme/02-open-note.png" width="390" alt="打开笔记的图文步骤卡"></a></td>
+    <td align="center"><strong>制作封面</strong><br><a href="docs/readme/03-make-cover.png"><img src="docs/readme/03-make-cover.png" width="390" alt="制作封面的图文步骤卡"></a></td>
+  </tr>
+  <tr>
+    <td align="center"><strong>排版正文</strong><br><a href="docs/readme/04-markdown-cards.png"><img src="docs/readme/04-markdown-cards.png" width="390" alt="排版正文的图文步骤卡"></a></td>
+    <td align="center"><strong>检查并导出</strong><br><a href="docs/readme/05-export.png"><img src="docs/readme/05-export.png" width="390" alt="检查并导出的图文步骤卡"></a></td>
+  </tr>
+</table>
 
 排版和 PNG 生成在本地完成。导入图片会复制到知识库，导出文件写入你选择的位置。「保存参数到笔记」会更新笔记属性。引用远程图片时，预览或导出可能向图片原地址发起请求。
 
