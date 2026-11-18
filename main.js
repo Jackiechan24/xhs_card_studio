@@ -1,5 +1,6 @@
 const {
   ItemView,
+  Menu,
   Notice,
   Plugin,
   PluginSettingTab,
@@ -769,6 +770,7 @@ const DEFAULT_CONFIG = {
   detail_page_type: "modular",
   detail_module_layout: "auto",
   detail_text_color: VISUAL_RULES.ink,
+  detail_text_color_custom: false,
   detail_title_highlight: "",
   detail_title_color_mode: "solid",
   detail_title_highlight_color: VISUAL_RULES.accent,
@@ -1345,6 +1347,8 @@ class XHSCardStudioView extends ItemView {
     merged.cover_letter_spacing = this.toNumber(merged.cover_letter_spacing, DEFAULT_CONFIG.cover_letter_spacing, -50, 100);
     merged.detail_background_color = this.toColor(merged.detail_background_color, DEFAULT_CONFIG.detail_background_color);
     merged.detail_text_color = this.toColor(merged.detail_text_color, DEFAULT_CONFIG.detail_text_color);
+    merged.detail_text_color_custom = frontmatter.detail_text_color_custom === true
+      || (frontmatter.detail_text_color_custom == null && merged.detail_text_color !== DEFAULT_CONFIG.detail_text_color);
     merged.detail_title_highlight = this.toText(merged.detail_title_highlight);
     merged.detail_title_color_mode = ["solid", "gradient"].includes(merged.detail_title_color_mode)
       ? merged.detail_title_color_mode
@@ -3464,7 +3468,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   setCoverBackdrop(config, backdrop, y, height, hasText) {
-    const opacity=Math.max(0,Math.min(100,Math.round(Number(config.cover_overlay_opacity??70)/10)*10));
+    const opacity=Math.max(0,Math.min(100,Math.round(Number(config.cover_overlay_opacity??70))));
     Object.assign(backdrop,{x:0,y,w:1080,h:height,background:hasText?`rgba(255, 255, 255, ${this.isTransparentCoverTitle(config)?1:opacity/100})`:'transparent',
       opacity:1,borderRadius:0,borderWidth:0,locked:true,className:'xhs-cover-text-backdrop'});
   }
@@ -3474,16 +3478,55 @@ class XHSCardStudioView extends ItemView {
     const update=(key,value)=>{this.config[key]=value;this.layoutCoverText();this.persistDraft();void this.renderPreview();};
     const displayTools = toolbar.createDiv({ cls: "xhs-cover-tool-group" });
     displayTools.createSpan({text:'标题显示',cls:'xhs-canvas-toolbar-label'});
-    const mode=displayTools.createEl('select',{attr:{'aria-label':'标题显示'}});
-    for(const [value,text]of [['normal','普通标题'],['cutout','透明镂空']])mode.createEl('option',{text,attr:{value}});
-    mode.value=this.isTransparentCoverTitle()?'cutout':'normal';
-    mode.addEventListener('change',()=>update('cover_title_display',mode.value));
-    const opacityTools = toolbar.createDiv({ cls: "xhs-cover-tool-group" });
-    opacityTools.createSpan({text:'透明度',cls:'xhs-canvas-toolbar-label'});
-    const select=opacityTools.createEl('select',{attr:{'aria-label':'透明度'}});
-    for(let value=0;value<=100;value+=10)select.createEl('option',{text:`${value}%`,attr:{value:String(value)}});
-    select.value=String(this.isTransparentCoverTitle()?this.config.cover_cutout_transparency??100:100-(this.config.cover_overlay_opacity??70));
-    select.addEventListener('change',()=>update(this.isTransparentCoverTitle()?'cover_cutout_transparency':'cover_overlay_opacity',this.isTransparentCoverTitle()?Number(select.value):100-Number(select.value)));
+    const mode = displayTools.createEl("button", {
+      cls: "xhs-cover-mode-select",
+      text: this.isTransparentCoverTitle() ? "透明镂空" : "普通标题",
+      attr: { type: "button", "aria-label": "标题显示", "aria-haspopup": "menu" }
+    });
+    mode.addEventListener("click", () => {
+      const menu = new Menu();
+      for (const [value, text] of [["normal", "普通标题"], ["cutout", "透明镂空"]]) {
+        menu.addItem(item => item.setTitle(text)
+          .setChecked((this.isTransparentCoverTitle() ? "cutout" : "normal") === value)
+          .onClick(() => update("cover_title_display", value)));
+      }
+      const bounds = mode.getBoundingClientRect();
+      menu.showAtPosition({ x: bounds.left, y: bounds.bottom + 6 });
+    });
+    const opacityTools = toolbar.createDiv({ cls: "xhs-cover-tool-group xhs-cover-opacity-control" });
+    opacityTools.createSpan({text:"透明度",cls:"xhs-canvas-toolbar-label"});
+    const slider = opacityTools.createEl("input", {
+      cls: "xhs-cover-opacity-slider",
+      attr: { type: "range", min: "0", max: "100", step: "1", "aria-label": "透明度" }
+    });
+    const value = opacityTools.createEl("output", { cls: "xhs-cover-opacity-value" });
+    slider.value = String(this.isTransparentCoverTitle()
+      ? this.config.cover_cutout_transparency ?? 100 : 100 - (this.config.cover_overlay_opacity ?? 70));
+    const refreshValue = () => {
+      value.textContent = slider.value + "%";
+      slider.setAttribute("aria-valuetext", value.textContent);
+      slider.style.setProperty("--xhs-slider-progress", slider.value + "%");
+    };
+    refreshValue();
+    slider.addEventListener("input", () => {
+      refreshValue();
+      const cutout = this.isTransparentCoverTitle();
+      this.config[cutout ? "cover_cutout_transparency" : "cover_overlay_opacity"] =
+        cutout ? Number(slider.value) : 100 - Number(slider.value);
+      this.layoutCoverText();
+      const card = this.previewCanvasEl;
+      if (!card) return;
+      for (const module of this.config.xhs_modules) {
+        if (!(module.className || "").includes("xhs-cover-text-backdrop")) continue;
+        const node = card.querySelector('[data-module-id="' + module.id + '"]');
+        if (node) this.applyModuleStyle(node, module);
+      }
+      if (cutout) this.renderTransparentCoverTitle(card, { scale: 1 });
+    });
+    slider.addEventListener("change", () => {
+      this.persistDraft();
+      void this.renderPreview();
+    });
   }
 
   isTransparentCoverTitle(config=this.config) {
@@ -3524,9 +3567,11 @@ class XHSCardStudioView extends ItemView {
     backdrop.createEl('img',{cls:'xhs-cutout-raster',attr:{src:dataUrl,alt:''}});
     element.classList.add('xhs-cutout-title');
     for (const textElement of [element, ...element.querySelectorAll("*")]) {
-      for (const property of ["color", "-webkit-text-fill-color", "background-image", "text-shadow"]) {
-        textElement.style.removeProperty(property);
-      }
+      textElement.style.color = "transparent";
+      textElement.style.setProperty("-webkit-text-fill-color", "transparent");
+      textElement.style.backgroundImage = "none";
+      textElement.style.textShadow = "none";
+      textElement.style.setProperty("-webkit-text-stroke", "0 transparent");
     }
     this.coverCutoutRaster={moduleId:panel.id,dataUrl};
   }
@@ -3784,7 +3829,7 @@ class XHSCardStudioView extends ItemView {
           if (!active) this.selectUnifiedCoverTemplate(choice);
         });
       }
-      const reset = this.controlsEl.createEl("button", { text: "重置当前模板", cls: "xhs-cover-reset-button",
+      const reset = this.controlsEl.createEl("button", { text: "恢复默认设置", cls: "xhs-cover-reset-button",
         attr: { type: "button" } });
       reset.addEventListener("click", () => this.resetCurrentCoverTemplate());
     });
@@ -3914,7 +3959,7 @@ class XHSCardStudioView extends ItemView {
 
   addUnifiedCoverColor(label,key,role="",onChange,parent=this.controlsEl) {
     const target=()=>this.config.xhs_modules.find(module=>module.coverTextRole===role);
-    const current=()=>role?(target()?.coverTextStyle?.color || target()?.color):this.config[key];
+    const current=()=>role?(target()?.coverTextStyle?.color || target()?.color):(key === "detail_text_color" ? this.getDetailTextColor() : this.config[key]);
     const field=this.createField(label,parent);
     const row=field.createDiv({cls:'xhs-cover-custom-color-row'});
     const swatch=row.createEl('input',{cls:'xhs-cover-custom-swatch',attr:{type:'color','aria-label':`${label}颜色预览`}});
@@ -3924,13 +3969,29 @@ class XHSCardStudioView extends ItemView {
     const apply=(value, edited=false)=>{
       const switchingTitleMode = edited && ((key==="cover_title_color" && this.isTitleGradientEnabled())
         || (key.startsWith("title_gradient_") && !this.isTitleGradientEnabled()));
-      if(value===current() && !switchingTitleMode)return;
+      const selectingDetailText = edited && key === "detail_text_color" && !this.config.detail_text_color_custom;
+      if(value===current() && !switchingTitleMode && !selectingDetailText)return;
       if(role) {
         const module=target();if(!module)return;
         module.color=value;this.markModuleManualChange(module,{color:value});
         this.persistDraft();this.queueCoverColorPreview();return;
       }
       this.config[key]=value;
+      if (key === "detail_text_color" && edited) this.config.detail_text_color_custom = true;
+      if (key === "detail_background_color" || key === "detail_text_color") {
+        this.normalizeDetailDesignConfig();
+        this.persistDraft();
+        this.applyDetailStyleToPreview();
+        if (key === "detail_background_color") {
+          const textPicker = this.controlsEl.querySelector('[aria-label="字体色颜色预览"]');
+          const textInput = this.controlsEl.querySelector('[aria-label="字体色色值"]');
+          const color = this.getDetailTextColor();
+          if (textPicker) textPicker.value = color;
+          if (textInput) textInput.value = color.toUpperCase();
+        }
+        onChange?.();
+        return;
+      }
       if (key==="cover_title_color") this.applyUnifiedCoverTextColor({color:value},{refreshControls:false});
       else if (key.startsWith("title_gradient_")) this.applyUnifiedCoverTextColor({type:"gradient",stops:[this.config.title_gradient_from,this.config.title_gradient_to]},{refreshControls:false});
       else {this.syncUnifiedCoverContent();this.persistDraft();this.queueCoverColorPreview();}
@@ -4947,7 +5008,7 @@ class XHSCardStudioView extends ItemView {
       {
         title: "图片",
         items: [
-          ["图片", "image"]
+          ["图片 Logo", "image"]
         ]
       },
       {
@@ -4981,7 +5042,7 @@ class XHSCardStudioView extends ItemView {
         if (this.isCenteredLabelModule(module)) {
           icon.style.color = this.resolveCssModuleColor(module.color);
           icon.style.borderWidth = Math.max(1, this.getCenteredLabelBorderWidth(module) * 112 / module.w) + "px";
-          if (this.isPillLabelModule(module)) icon.style.setProperty("--xhs-pill-preview-gradient", "linear-gradient(90deg, " + CUSTOM_PILL_BORDER_STOPS.join(", ") + ")");
+          if (this.isPillLabelModule(module)) icon.style.borderColor = this.resolveCssModuleColor(module.borderColor || module.color);
         }
         if (preset === "corner-frame") this.applyCornerFrameStyles(icon, module, 112 / module.w);
         button.addEventListener("click", (event) => {
@@ -5028,8 +5089,8 @@ class XHSCardStudioView extends ItemView {
     };
 
     const presets = {
-      image: { ...common, name: "图片", type: "image", role: "", x: 570, y: 690, w: 360, h: 240, objectFit: "contain", borderRadius: DEFAULT_IMAGE_RADIUS, className: "xhs-module-custom-image" },
-      "image-main": { ...common, name: "图片", type: "image", role: "", x: 570, y: 690, w: 360, h: 240, objectFit: "contain", borderRadius: DEFAULT_IMAGE_RADIUS, className: "xhs-module-custom-image" },
+      image: { ...common, name: "图片 Logo", type: "image", role: "", x: 570, y: 690, w: 360, h: 240, objectFit: "contain", borderRadius: DEFAULT_IMAGE_RADIUS, className: "xhs-module-custom-image" },
+      "image-main": { ...common, name: "图片 Logo", type: "image", role: "", x: 570, y: 690, w: 360, h: 240, objectFit: "contain", borderRadius: DEFAULT_IMAGE_RADIUS, className: "xhs-module-custom-image" },
       "image-logo": { ...common, name: "Logo", type: "image", role: "logo", x: 820, y: 92, w: 120, h: 120, objectFit: "contain", className: "xhs-module-custom-image" },
       "image-icon2": { ...common, name: "图标", type: "image", role: "icon2", x: 820, y: 235, w: 120, h: 120, objectFit: "contain", className: "xhs-module-custom-image" },
       "label-solid": { ...common, ...textCommon, name: "青色标签", background: "var(--xhs-accent)", className: "xhs-module-label-badge" },
@@ -5043,7 +5104,7 @@ class XHSCardStudioView extends ItemView {
         background: "transparent",
         borderRadius: 999,
         borderWidth: 2,
-        borderMode: "gradient",
+        borderMode: "solid",
         borderColor: DEFAULT_PILL_LABEL_COLOR,
         className: "xhs-module-label-pill"
       },
@@ -5537,8 +5598,8 @@ class XHSCardStudioView extends ItemView {
     config.text_color = theme.text;
     config.accent_color = theme.accent;
     config.secondary_color = theme.secondary;
-    config.detail_background_color = DEFAULT_CONFIG.detail_background_color;
-    config.detail_text_color = theme.text;
+    config.detail_background_color = this.parseCoverHexColor(config.detail_background_color) || DEFAULT_CONFIG.detail_background_color;
+    config.detail_text_color = this.parseCoverHexColor(config.detail_text_color) || DEFAULT_CONFIG.detail_text_color;
   }
 
   getCompositionBackgroundTextColor(config = this.config, preferredColor = "") {
@@ -5796,8 +5857,8 @@ class XHSCardStudioView extends ItemView {
         module.borderRadius = 999;
         module.background = "transparent";
         module.borderWidth = Number(module.borderWidth) || 2;
-        module.borderMode = module.borderMode === "solid" ? "solid" : "gradient";
-        module.borderColor = module.borderColor || "var(--xhs-accent)";
+        module.borderMode = "solid";
+        module.borderColor = module.borderColor || module.color || DEFAULT_PILL_LABEL_COLOR;
       }
       if (module.id && module.id.startsWith("speech") && module.className === "xhs-module-ai-speech") {
         module.className = "xhs-module-speech-bubble";
@@ -6648,14 +6709,11 @@ class XHSCardStudioView extends ItemView {
 
   renderCanvasModuleToolbar(page) {
     if (page.kind !== "cover") return;
+    const selected = this.getSelectedModule();
+    if (!selected) return;
     const toolbar = this.previewShellEl.createDiv({ cls: "xhs-canvas-toolbar xhs-cover-style-toolbar" });
     const settings = toolbar.createDiv({ cls: "xhs-cover-toolbar-settings" });
-    this.renderCoverBackdropTools(settings);
-    const selected = this.getSelectedModule();
-    if (!selected) {
-      settings.createDiv({ cls: "xhs-canvas-toolbar-label", text: "选择模块后调整样式" });
-      return;
-    }
+    if (selected.coverTextRole === "title") this.renderCoverBackdropTools(settings);
 
     const moduleTools = settings.createDiv({ cls: "xhs-cover-tool-group xhs-cover-module-tools" });
     moduleTools.createDiv({ cls: "xhs-canvas-toolbar-label", text: this.getModuleLabel(selected) });
@@ -6664,6 +6722,15 @@ class XHSCardStudioView extends ItemView {
         const color = moduleTools.createEl("input", { cls: "xhs-canvas-text-color", type: "color",
           attr: { "aria-label": "文字颜色" } });
         color.value = this.parseCoverHexColor(selected.color) || this.config.text_color;
+        color.addEventListener("input", () => {
+          const patch = { color: color.value };
+          if (this.isPillLabelModule(selected)) Object.assign(patch, { borderColor: color.value, borderMode: "solid" });
+          Object.assign(selected, patch);
+          this.markModuleManualChange(selected, patch);
+          const node = this.previewCanvasEl?.querySelector('[data-module-id="' + selected.id + '"]');
+          if (node) this.applyModuleStyle(node, selected);
+          this.persistDraft();
+        });
         color.addEventListener("change", () => {
           const patch = { color: color.value };
           if (this.isPillLabelModule(selected)) {
@@ -6770,6 +6837,19 @@ class XHSCardStudioView extends ItemView {
         });
       }
     }
+    const colors = this.createCoverColorGroup("自定义颜色");
+    this.addUnifiedCoverColor("背景色", "detail_background_color", "", undefined, colors);
+    this.addUnifiedCoverColor("字体色", "detail_text_color", "", undefined, colors);
+    const resetColors = this.makeSmallControlButton(this.controlsEl, "恢复默认设置", () => {
+      this.updateDetailStyle({
+        detail_background_color: DEFAULT_CONFIG.detail_background_color,
+        detail_text_color: DEFAULT_CONFIG.detail_text_color,
+        detail_title_highlight_color: DEFAULT_CONFIG.detail_title_highlight_color,
+        detail_text_color_custom: false
+      });
+      this.renderControls();
+    });
+    resetColors.classList.add("xhs-cover-reset-button");
   }
 
   renderDetailAccentControl(parent) {
@@ -8020,6 +8100,7 @@ class XHSCardStudioView extends ItemView {
       element.style.width = `${module.w}px`;
       element.style.height = `${module.h}px`;
       if (module.className === "xhs-module-corner-frame") this.applyCornerFrameStyles(element, module);
+      if (this.isPillLabelModule(module)) this.applyModuleStyle(element, module);
       if(module.coverTextRole) {
         this.layoutCoverText();
         card.querySelectorAll("[data-module-id]").forEach(node=>{
@@ -11695,18 +11776,34 @@ class XHSCardStudioView extends ItemView {
 
   getContentDivider(config = this.config) {
     const width=VISUAL_RULES.dividerWidth*(Number(config.xhs_width)||VISUAL_RULES.width)/VISUAL_RULES.width;
-    return {width,color:VISUAL_RULES.dividerColor,border:`${width}px solid ${VISUAL_RULES.dividerColor}`,
-      inset:`inset ${-width}px 0 0 ${VISUAL_RULES.dividerColor}`};
+    const background = this.parseCoverHexColor(config.detail_background_color) || DEFAULT_CONFIG.detail_background_color;
+    const dark = this.getDetailColorContrast("#ffffff", background) > this.getDetailColorContrast("#000000", background);
+    const color = dark ? "#555961" : VISUAL_RULES.dividerColor;
+    return {width,color,border:width + "px solid " + color,
+      inset:"inset " + (-width) + "px 0 0 " + color};
   }
 
   getDetailPalette(config = this.config) {
-    const {background,ink,bodyInk,muted,surface,media}=VISUAL_RULES;
+    const background = this.parseCoverHexColor(config.detail_background_color) || DEFAULT_CONFIG.detail_background_color;
+    const dark = this.getDetailColorContrast("#ffffff", background) > this.getDetailColorContrast("#000000", background);
+    const lift = amount => "#" + background.slice(1).match(/../g).map(channel =>
+      Math.round(parseInt(channel,16) * (1-amount) + 255*amount).toString(16).padStart(2,"0")).join("");
+    const surface = dark ? lift(.08) : VISUAL_RULES.surface;
+    const media = dark ? lift(.14) : VISUAL_RULES.media;
+    const requested = this.parseCoverHexColor(config.detail_text_color) || DEFAULT_CONFIG.detail_text_color;
+    const readable = color => [background,surface,media].every(base=>this.getDetailColorContrast(color,base)>=4.5);
+    const customText = config.detail_text_color_custom === true
+      || (config.detail_text_color_custom == null && requested !== DEFAULT_CONFIG.detail_text_color);
+    const ink = customText ? requested : (readable(requested) ? requested : (dark ? "#f5f5f7" : VISUAL_RULES.ink));
+    const bodyInk = customText ? requested : (dark ? "#e2e4e8" : VISUAL_RULES.bodyInk);
+    const muted = dark ? "#b8bdc7" : VISUAL_RULES.muted;
     const accent=this.parseCoverHexColor(config.detail_title_highlight_color) || VISUAL_RULES.accent;
     const readableOn=base=>this.getDetailColorContrast(accent,base)>=4.5;
     const highlight=readableOn(background) && readableOn(surface) && readableOn(media) ? accent : ink;
     const channels=accent.slice(1).match(/../g).map(channel=>parseInt(channel,16));
     let tint=background;
-    if(accent===VISUAL_RULES.accent) tint='#e6ebff';
+    if (dark) tint=surface;
+    else if(accent===VISUAL_RULES.accent) tint='#e6ebff';
     else for(const amount of [.12,.08,.04]) {
       const candidate='#'+channels.map(channel=>Math.round(255+(channel-255)*amount).toString(16).padStart(2,'0')).join('');
       if(this.getDetailColorContrast(highlight,candidate)>=4.5){tint=candidate;break;}
@@ -11787,10 +11884,10 @@ class XHSCardStudioView extends ItemView {
   }
 
   normalizeDetailDesignConfig(config = this.config) {
-    config.detail_background_color = DEFAULT_CONFIG.detail_background_color;
+    config.detail_background_color = this.parseCoverHexColor(config.detail_background_color) || DEFAULT_CONFIG.detail_background_color;
     config.detail_page_type=config.detail_page_type==="document"?"document":"modular";
     config.detail_module_layout="auto";
-    config.detail_text_color=VISUAL_RULES.ink;
+    config.detail_text_color=this.parseCoverHexColor(config.detail_text_color) || DEFAULT_CONFIG.detail_text_color;
     config.detail_title_color_mode='solid';
     config.detail_title_highlight_color=this.parseCoverHexColor(config.detail_title_highlight_color) || VISUAL_RULES.accent;
     delete config.detail_title_gradient_from;
@@ -12327,7 +12424,7 @@ class XHSCardStudioView extends ItemView {
       "highlight_outline_mode", "highlight_outline_width", "highlight_outline_color",
       "cover_font_weight", "cover_line_height", "cover_letter_spacing",
       "detail_page_type", "detail_module_layout", "detail_typography_version",
-      "detail_background_color", "detail_text_color", "detail_font_size", "detail_image_gap", "detail_image_layouts",
+      "detail_background_color", "detail_text_color", "detail_text_color_custom", "detail_font_size", "detail_image_gap", "detail_image_layouts",
       "detail_font_weight", "detail_line_height", "detail_letter_spacing",
       "detail_title_highlight", "detail_title_highlight_color",
       "title_letter_spacing", "title_line_height",
@@ -12364,7 +12461,7 @@ class XHSCardStudioView extends ItemView {
       "highlight_outline_mode", "highlight_outline_width", "highlight_outline_color",
       "body_size", "cover_font_weight", "cover_line_height", "cover_letter_spacing",
       "detail_page_type", "detail_module_layout",
-      "detail_background_color", "detail_text_color", "detail_font_size",
+      "detail_background_color", "detail_text_color", "detail_text_color_custom", "detail_font_size",
       "detail_font_weight", "detail_line_height", "detail_letter_spacing",
       "detail_title_highlight", "detail_title_highlight_color",
       "detail_image_width", "detail_image_height", "detail_image_gap", "detail_image_layouts",
@@ -12970,8 +13067,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   drawStyledDetailBackground(ctx, width, height) {
-    this.config.detail_background_color = DEFAULT_CONFIG.detail_background_color;
-    ctx.fillStyle = DEFAULT_CONFIG.detail_background_color;
+    ctx.fillStyle = this.parseCoverHexColor(this.config.detail_background_color) || DEFAULT_CONFIG.detail_background_color;
     ctx.fillRect(0, 0, width, height);
   }
 
@@ -13229,11 +13325,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   getDetailTextColor() {
-    const text=this.config.detail_text_color || DEFAULT_CONFIG.detail_text_color;
-    const background=this.config.detail_background_color || DEFAULT_CONFIG.detail_background_color;
-    if(this.getDetailColorContrast(text,background)>=4.5)return text;
-    return this.getDetailColorContrast('#000000',background)>=this.getDetailColorContrast('#ffffff',background)
-      ? '#111116' : '#ffffff';
+    return this.getDetailPalette().ink;
   }
 
   getDetailHeadingMetrics(level, scale = 1) {
@@ -14065,7 +14157,10 @@ class XHSCardStudioView extends ItemView {
     const blockTop = contentTop + Math.max(0, (contentHeight - textBlockHeight) / 2);
     ctx.font = `${module.fontWeight || 900} ${fontSize}px ${fontFamily}`;
     ctx.fillStyle = this.resolveModuleFill(module.color || "#ffffff");
-    ctx.textBaseline = "middle";
+    const metrics = ctx.measureText("Mg");
+    const ascent = metrics.fontBoundingBoxAscent ?? fontSize * .8;
+    const descent = metrics.fontBoundingBoxDescent ?? fontSize * .2;
+    ctx.textBaseline = "alphabetic";
     lines.forEach((line, index) => {
       const textWidth = this.measureTextWithSpacing(ctx, line, letterSpacing);
       const contentLeft = module.x + borderWidth + padding.x;
@@ -14074,7 +14169,7 @@ class XHSCardStudioView extends ItemView {
       const maxX = contentLeft + contentWidth - textWidth;
       const centeredX = contentLeft + (contentWidth - textWidth) / 2;
       const drawX = Math.max(minX, Math.min(maxX, centeredX));
-      const lineCenterY = blockTop + index * lineHeight + lineHeight / 2;
+      const lineCenterY = blockTop + index * lineHeight + lineHeight / 2 + (ascent - descent) / 2;
       if (this.isCoverSubtitleModule(module)) {
         this.strokeCoverText(ctx, line, drawX, lineCenterY, textWidth, letterSpacing, "subtitle", ctx.fillStyle);
       }
@@ -14092,10 +14187,12 @@ class XHSCardStudioView extends ItemView {
     const innerRadius = Math.max(0, Math.min(innerWidth, innerHeight) / 2);
 
     const buffer = document.createElement("canvas");
-    buffer.width = width;
-    buffer.height = height;
+    const scale = 3;
+    buffer.width = width * scale;
+    buffer.height = height * scale;
     const bufferCtx = buffer.getContext("2d");
     if (!bufferCtx) return null;
+    bufferCtx.scale(scale, scale);
     bufferCtx.fillStyle = (module.borderMode || "gradient") === "gradient"
       ? this.createTextGradient(bufferCtx, 0, 0, width, module.custom ? CUSTOM_PILL_BORDER_STOPS : undefined)
       : this.resolveModuleFill(module.borderColor || module.color || "var(--xhs-accent)");
@@ -14113,7 +14210,7 @@ class XHSCardStudioView extends ItemView {
   drawPillLabelBorder(ctx, module, borderWidth) {
     if (typeof document !== "undefined") {
       const border = this.createPillLabelBorderCanvas(module, borderWidth);
-      if (border) ctx.drawImage(border, module.x, module.y);
+      if (border) ctx.drawImage(border, module.x, module.y, module.w, module.h);
       return;
     }
 
@@ -14724,13 +14821,19 @@ class XHSCardStudioView extends ItemView {
     if (!this.isCenteredLabelModule(module)) return;
     const minSize = this.getCenteredLabelMinSize(module);
     module.w = Math.max(Number(module.w) || 0, minSize.w);
-    if ((module.className || "").includes("xhs-module-layout-pill")) {
-      module.h = Math.max(Number(module.h) || 0, minSize.h);
+    if ((module.className || "").includes("xhs-module-layout-pill") || (module.custom && this.isPillLabelModule(module))) {
+      module.h = Math.max(Number(module.h) || 0, minSize.h, module.custom ? 68 : 0);
     } else {
       module.h = minSize.h;
     }
     module.textAlign = "center";
-    if (this.isPillLabelModule(module)) module.borderRadius = 999;
+    if (this.isPillLabelModule(module)) {
+      module.borderRadius = Math.min(module.w, module.h) / 2;
+      if (module.custom) {
+        module.borderMode = "solid";
+        module.borderColor = module.borderColor || module.color || DEFAULT_PILL_LABEL_COLOR;
+      }
+    }
   }
 
   fitTextModuleFrameToContent(module) {
