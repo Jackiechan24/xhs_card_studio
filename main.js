@@ -674,6 +674,7 @@ const VISUAL_RULES = Object.freeze({
 });
 
 const DEFAULT_CONFIG = {
+  cover_footer_text: "赵同学AI",
   xhs_style: "composition",
   composition_layout: "vertical",
   composition_variant: "headline-band",
@@ -736,7 +737,7 @@ const DEFAULT_CONFIG = {
   chips: ["设计", "办公", "营销", "数据分析"],
   bullets: ["前沿技术展示", "行业领袖论坛", "互动体验区", "AI 基础入门", "机器学习实战", "深度学习前沿"],
   accent_color: "#08e6cf",
-  secondary_color: "#ffffff",
+  secondary_color: "#000000",
   background_color: "#f7fbff",
   text_color: "#000000",
   cover_title_color: "",
@@ -1021,6 +1022,12 @@ class XHSCardStudioView extends ItemView {
       this.clearPreviewSelection();
     });
 
+    this.registerDomEvent(document, "keydown", event => {
+      if (event.key !== "Escape") return;
+      if (!this.containerEl.contains(document.activeElement) && this.app.workspace.activeLeaf?.view !== this) return;
+      this.clearPreviewSelection();
+      if (this.containerEl.contains(document.activeElement)) document.activeElement.blur?.();
+    });
     this.renderToolbar();
     this.observeStudioViewport();
     await this.reloadFromActiveFile();
@@ -1188,7 +1195,10 @@ class XHSCardStudioView extends ItemView {
       : {};
     for (const state of Object.values(merged.cover_template_settings)) {
       removeReferenceLayoutConfig(state.appearance);
-      if (state.appearance) delete state.appearance.composition_layout;
+      if (state.appearance) {
+        delete state.appearance.composition_layout;
+        this.migrateCoverSecondaryDefault(state.appearance);
+      }
     }
     removeReferenceLayoutConfig(merged);
 
@@ -1455,7 +1465,11 @@ class XHSCardStudioView extends ItemView {
 
     if(!Object.prototype.hasOwnProperty.call(frontmatter || {},"background_color") && !frontmatter?.cover_editor_version
       && !merged.cover_template_settings[this.getCoverTemplateKey(merged)])this.applyDefaultCoverAppearance(merged);
+    if (Object.prototype.hasOwnProperty.call(frontmatter || {}, "secondary_color")) {
+      merged.secondary_color = this.toColor(frontmatter.secondary_color, DEFAULT_CONFIG.secondary_color);
+    }
     if(frontmatter?.cover_highlight_color)merged.cover_highlight_color=this.toColor(frontmatter.cover_highlight_color,"#0071e3");
+    this.migrateCoverSecondaryDefault(merged);
     if (migratedRetiredStyle) this.ensureUnifiedCoverVisuals(merged);
     return merged;
   }
@@ -3016,16 +3030,29 @@ class XHSCardStudioView extends ItemView {
     return config.xhs_style==="composition"?`composition:${config.composition_variant}`:config.xhs_style;
   }
 
+  migrateCoverSecondaryDefault(config) {
+    if (config.cover_secondary_default_version === 1) return;
+    const legacyColors = new Set([
+      "#ffffff", "#00d6bd",
+      ...this.getUnifiedCoverThemes().map(([, palette]) => palette.secondary.toLowerCase())
+    ]);
+    if (!config.secondary_color || legacyColors.has(String(config.secondary_color).toLowerCase())) {
+      config.secondary_color = "#000000";
+      if (config.composition_custom_colors) config.composition_custom_colors.secondary_color = "#000000";
+    }
+    config.cover_secondary_default_version = 1;
+  }
+
   applyDefaultCoverAppearance(config=this.config) {
     const palette=CLEAN_GRADIENT_PALETTES.find(item=>item.id==="apple-air-sky");
-    Object.assign(config,{background_color:palette.background,secondary_color:palette.secondary,accent_color:palette.accent,
+    Object.assign(config,{background_color:palette.background,secondary_color:"#000000",accent_color:palette.accent,
       text_color:"#000000",cover_title_color:"#000000",cover_highlight_color:"",title_gradient_enabled:false,google_gradient_enabled:false,
       composition_theme:"custom",cover_typography_version:0,cover_text_layout_version:0});
     Object.assign(config,{cover_overlay_width:0,cover_overlay_height:0,cover_overlay_opacity:70});
     Object.assign(config,{cover_title_display:'normal',cover_cutout_transparency:100,cover_rule_hidden:false,cover_rule_thickness:0});
     config.composition_custom_colors=this.captureCompositionColors(config);
     if(config.xhs_style==="neon-grid")Object.assign(config,{background_color:"#000000",text_color:"#ffffff",
-      cover_title_color:"#ffffff",accent_color:"#00d6bd",secondary_color:"#00d6bd"});
+      cover_title_color:"#ffffff",accent_color:"#00d6bd",secondary_color:"#000000"});
   }
 
   createSwissCoverModules(config=this.config) {
@@ -3098,6 +3125,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   ensureUnifiedCoverVisuals(config=this.config) {
+    this.migrateCoverSecondaryDefault(config);
     if(config.cover_solid_palette_version!==1) {
       config.title_gradient_enabled=false;config.google_gradient_enabled=false;
       config.cover_solid_palette_version=1;
@@ -3225,7 +3253,9 @@ class XHSCardStudioView extends ItemView {
       }
       media.forEach((module, index) => {
         const [x, y, w, h] = MOSAIC_IMAGE_FRAMES[index];
-        Object.assign(module, { x, y, w, h, objectFit: "contain", borderRadius: 0, borderWidth: 0 });
+        if (!module.manualPosition) Object.assign(module, { x, y });
+        if (!module.manualSize) Object.assign(module, { w, h });
+        Object.assign(module, { objectFit: "contain", borderRadius: 0, borderWidth: 0 });
       });
     }
     const bottom=media.length?Math.max(...media.map(module=>module.y+module.h)):0;
@@ -3495,11 +3525,12 @@ class XHSCardStudioView extends ItemView {
     });
     const opacityTools = toolbar.createDiv({ cls: "xhs-cover-tool-group xhs-cover-opacity-control" });
     opacityTools.createSpan({text:"透明度",cls:"xhs-canvas-toolbar-label"});
-    const slider = opacityTools.createEl("input", {
+    const opacityTrack = opacityTools.createDiv({ cls: "xhs-opacity-track" });
+    const slider = opacityTrack.createEl("input", {
       cls: "xhs-cover-opacity-slider",
       attr: { type: "range", min: "0", max: "100", step: "1", "aria-label": "透明度" }
     });
-    const value = opacityTools.createEl("output", { cls: "xhs-cover-opacity-value" });
+    const value = opacityTrack.createEl("output", { cls: "xhs-cover-opacity-value" });
     slider.value = String(this.isTransparentCoverTitle()
       ? this.config.cover_cutout_transparency ?? 100 : 100 - (this.config.cover_overlay_opacity ?? 70));
     const refreshValue = () => {
@@ -3634,7 +3665,7 @@ class XHSCardStudioView extends ItemView {
     if(!rule.manualSize)rule.w=936;
     } else config.xhs_modules=config.xhs_modules.filter(m=>m.id!=="cover-structure-rule");
     const footer=modules.find(m=>m.id==="footer"),checkers=modules.find(m=>m.id==="checkers");
-    if(footer)Object.assign(footer,{text:"赵同学AI",x:0,y:1350,w:1080,h:90,fontSize:44,fontWeight:500,
+    if(footer)Object.assign(footer,{text:this.toText(config.cover_footer_text),x:0,y:1350,w:1080,h:90,fontSize:44,fontWeight:500,
       lineHeight:1.2,letterSpacing:0,textAlign:"left",color:"#00110f",background:accent,opacity:1,rotation:0,borderWidth:0,borderRadius:0,locked:true,manualLayout:false});
     if(checkers)Object.assign(checkers,{x:808,y:1375,w:200,h:40,opacity:1,rotation:0,borderWidth:0,borderRadius:0,locked:true,manualLayout:false,
       background:"linear-gradient(65deg, transparent 0 34%, #00110f 34% 66%, transparent 66%) 0 0 / 40px 20px repeat"});
@@ -3887,7 +3918,7 @@ class XHSCardStudioView extends ItemView {
       ? this.getMagazinePalettes().map(palette => [palette.name, palette])
       : this.getUnifiedCoverThemes();
     const matchesTheme = palette => magazine ? this.config.accent_color === palette.color
-      : this.config.background_color === palette.background && this.config.secondary_color === palette.secondary;
+      : this.config.background_color === palette.background;
     const grid = this.controlsEl.createDiv({ cls: "xhs-unified-choice-grid" });
     const presets = themes.map(([name, palette]) => {
       const button = this.createCoverColorChoice(grid, name, [magazine ? palette.color : palette.background], matchesTheme(palette));
@@ -3895,7 +3926,6 @@ class XHSCardStudioView extends ItemView {
         if (magazine) this.config.accent_color = palette.color;
         else {
           this.config.background_color = palette.background;
-          this.config.secondary_color = palette.secondary;
         }
         this.syncUnifiedCoverContent();
         this.persistDraft();
@@ -3925,7 +3955,7 @@ class XHSCardStudioView extends ItemView {
     const matchesPreset = choice => this.isTitleGradientEnabled()
       ? choice.type === "gradient" && JSON.stringify(this.getTitleGradientStops()) === JSON.stringify(choice.stops)
       : choice.color === this.config.cover_title_color;
-    const grid = this.controlsEl.createDiv({ cls: "xhs-unified-choice-grid" });
+    const grid = this.controlsEl.createDiv({ cls: "xhs-unified-choice-grid xhs-font-color-palette" });
     const presets = [...solid, ...gradients].map(choice => {
       const button = this.createCoverColorChoice(grid, choice.name, choice.stops || [choice.color], matchesPreset(choice));
       button.addEventListener("click", () => this.applyUnifiedCoverTextColor(choice));
@@ -3961,11 +3991,26 @@ class XHSCardStudioView extends ItemView {
     const target=()=>this.config.xhs_modules.find(module=>module.coverTextRole===role);
     const current=()=>role?(target()?.coverTextStyle?.color || target()?.color):(key === "detail_text_color" ? this.getDetailTextColor() : this.config[key]);
     const field=this.createField(label,parent);
+    const purpose = {
+      background_color: "控制封面底色",
+      secondary_color: "控制辅助线或装饰元素",
+      cover_title_color: "控制主标题颜色",
+      cover_highlight_color: "只控制指定的高亮关键词",
+      detail_background_color: "控制详情页底色",
+      detail_text_color: "控制详情页正文与标题颜色"
+    }[key] || (role === "subtitle" ? "控制封面副标题颜色" : role === "description" ? "控制封面辅助文案颜色" : "");
+    field.title = purpose;
     const row=field.createDiv({cls:'xhs-cover-custom-color-row'});
     const swatch=row.createEl('input',{cls:'xhs-cover-custom-swatch',attr:{type:'color','aria-label':`${label}颜色预览`}});
     const input=row.createEl('input',{cls:'xhs-studio-input xhs-cover-custom-hex',attr:{type:'text','aria-label':`${label}色值`,placeholder:'#RRGGBB',spellcheck:'false',autocomplete:'off'}});
-    const initial=this.parseCoverHexColor(current() || (key==="cover_highlight_color" ? this.config.cover_title_color : "")) || '#ffffff';
+    const initial=this.parseCoverHexColor(current() || (key==="cover_highlight_color" ? this.config.accent_color : "")) || '#ffffff';
     swatch.value=initial;input.value=initial.toUpperCase();
+    swatch.title = purpose;
+    input.title = purpose;
+    if (purpose) {
+      swatch.setAttribute("aria-description", purpose);
+      input.setAttribute("aria-description", purpose);
+    }
     const apply=(value, edited=false)=>{
       const switchingTitleMode = edited && ((key==="cover_title_color" && this.isTitleGradientEnabled())
         || (key.startsWith("title_gradient_") && !this.isTitleGradientEnabled()));
@@ -4020,11 +4065,12 @@ class XHSCardStudioView extends ItemView {
   }
 
   createCoverColorChoice(parent,name,colors,active) {
+    parent.classList.add("xhs-color-palette");
     const button=parent.createEl("button",{cls:`xhs-unified-choice xhs-cover-color-choice${active?" is-active":""}`,
-      attr:{type:"button","aria-pressed":String(active)}});
+      attr:{type:"button","aria-pressed":String(active),"aria-label":name,title:name}});
     const swatch=button.createSpan({cls:"xhs-cover-color-swatch",attr:{"aria-hidden":"true"}});
     swatch.style.background=colors.length>1 ? this.getGradientCssFromStops(colors) : colors[0];
-    button.createSpan({cls:"xhs-cover-color-name",text:name});
+
     return button;
   }
 
@@ -6716,8 +6762,29 @@ class XHSCardStudioView extends ItemView {
     if (selected.coverTextRole === "title") this.renderCoverBackdropTools(settings);
 
     const moduleTools = settings.createDiv({ cls: "xhs-cover-tool-group xhs-cover-module-tools" });
-    moduleTools.createDiv({ cls: "xhs-canvas-toolbar-label", text: this.getModuleLabel(selected) });
+    const footerSelected = this.config.xhs_style === "neon-grid" && selected.id === "footer";
+    moduleTools.createDiv({
+      cls: "xhs-canvas-toolbar-label",
+      text: footerSelected ? "底部栏文案" : this.getModuleLabel(selected)
+    });
     if (selected.type === "text") {
+      if (this.config.xhs_style === "neon-grid" && selected.id === "footer") {
+        const footerText = moduleTools.createEl("input", {
+          cls: "xhs-cover-label-text",
+          attr: { type: "text", "aria-label": "底部栏文案", placeholder: "输入底部栏文案" }
+        });
+        footerText.value = selected.text || "";
+        footerText.addEventListener("input", () => {
+          selected.text = footerText.value;
+          this.config.cover_footer_text = footerText.value;
+          const node = this.previewCanvasEl?.querySelector('[data-module-id="footer"]');
+          if (node) node.textContent = footerText.value;
+          this.persistDraft();
+        });
+        toolbar.classList.add("xhs-footer-text-toolbar");
+        footerText.classList.add("xhs-footer-text-input");
+        return;
+      }
       if (selected.custom) {
         const color = moduleTools.createEl("input", { cls: "xhs-canvas-text-color", type: "color",
           attr: { "aria-label": "文字颜色" } });
@@ -6814,6 +6881,7 @@ class XHSCardStudioView extends ItemView {
         this.makeCanvasToolButton(imageTools, "恢复图片框", () => this.restoreCompositionImageBox(selected));
       }
     }
+    if (selected.locked) return;
     const actionTools = toolbar.createDiv({ cls: "xhs-cover-tool-group xhs-cover-action-tools" });
     this.makeCanvasToolButton(actionTools, "复制", () => this.duplicateSelectedModule());
     this.makeCanvasToolButton(actionTools, "删除", () => this.deleteSelectedModule(), " xhs-cover-delete-tool");
@@ -7237,6 +7305,7 @@ class XHSCardStudioView extends ItemView {
       const scale = Math.min(0.62, availableWidth / this.config.xhs_width, availableHeight / this.config.xhs_height);
       wrapper.style.width = `${this.config.xhs_width * scale}px`;
       wrapper.style.height = `${this.config.xhs_height * scale}px`;
+      card.style.setProperty("--xhs-detail-ui-scale", String(1 / Math.max(.01, scale)));
       card.style.transform = `scale(${scale})`;
     });
   }
@@ -7971,7 +8040,7 @@ class XHSCardStudioView extends ItemView {
       guide.style.top = `${Math.round(value)}px`;
       guide.style.width = `${this.config.xhs_width}px`;
     }
-    guide.createDiv({ cls: "xhs-alignment-guide-label", text: label });
+
   }
 
   clearAlignmentGuides(card) {
@@ -11517,10 +11586,19 @@ class XHSCardStudioView extends ItemView {
     tools.addEventListener('dblclick',event=>event.stopPropagation());
     if(this.canToggleDetailImagePairMode(wrap,key)) {
       const active=wrap.dataset.detailPairMode==='1';
-      const toggle=tools.createEl('button',{text:active?'逐张':'并排',attr:{type:'button','aria-label':active?'切换为逐张图片':'两张图片并排展示'}});
+      const toggle=tools.createEl('button',{text:active?'单列显示':'并排显示',attr:{type:'button','aria-label':active?'切换为逐张图片':'两张图片并排展示'}});
       toggle.addEventListener('click',event=>{event.stopPropagation();this.toggleDetailImagePairMode(wrap,key);});
     }
-    const reset=tools.createEl('button',{text:'恢复尺寸',attr:{type:'button'}});
+    const saved = this.config.detail_image_layouts?.[key];
+    const pairMode = wrap.dataset.detailPairMode === "1";
+    const adjusted = pairMode
+      ? Boolean(saved?.adjusted && Math.abs(Number(saved.w) - this.getDetailPairWidth(wrap, Infinity)) > 1)
+      : Boolean(saved?.adjusted);
+    if (!adjusted) {
+      if (!tools.childElementCount) tools.remove();
+      return;
+    }
+    const reset=tools.createEl('button',{text:'恢复尺寸',attr:{type:'button','aria-label':'恢复图片默认尺寸'}});
     reset.addEventListener('click',event=>{
       event.stopPropagation();
       if(wrap.dataset.detailPairMode==='1') {
@@ -12413,7 +12491,7 @@ class XHSCardStudioView extends ItemView {
 
   getFrontmatterSaveKeys() {
     const common = [
-      "cover_editor_version", "cover_overlay_opacity", "cover_title_display", "cover_cutout_transparency", "cover_rule_hidden", "cover_rule_thickness",
+      "cover_secondary_default_version", "cover_footer_text", "cover_editor_version", "cover_overlay_opacity", "cover_title_display", "cover_cutout_transparency", "cover_rule_hidden", "cover_rule_thickness",
       "cover_title_color", "cover_highlight_color", "swiss_cover_version", "cover_visual_version", "cover_solid_palette_version", "cover_typography_version", "cover_text_layout_version", "mosaic_image_archive",
       "composition_variant", "composition_theme", "composition_custom_colors", "composition_description", "composition_image", "composition_modules_by_layout", "composition_appearance_by_layout",
       "xhs_style", "xhs_width", "xhs_height", "background_color", "accent_color",
