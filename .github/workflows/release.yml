@@ -31,6 +31,12 @@ jobs:
       - name: Check release files
         run: |
           node --check main.js
+          node tests/cover-layout-standards.test.js
+          node tests/cover-text-grid.test.js
+          node tests/cover-template-state.test.js
+          node tests/headline-position-stability.test.js
+          node tests/detail-background.test.js
+          node tests/detail-markdown-highlight.test.js
           node -e 'const { version } = require("./manifest.json"); if (version !== process.env.RELEASE_VERSION) throw new Error("Tag must match manifest version");'
           test -s styles.css
       - name: Attest release files

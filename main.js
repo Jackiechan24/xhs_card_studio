@@ -673,6 +673,11 @@ const VISUAL_RULES = Object.freeze({
   ordinalMin:32,metricScale:8/3,metricLeading:1.05
 });
 
+const DETAIL_METRICS = Object.freeze({
+  headingSizes:[64,52,44,40,40,40],headingWeights:[700,650,600,600,600,600],headingLeading:[1.25,1.3,1.35,1.4,1.4,1.4],
+  body:40,bodyLeading:1.55,caption:32,captionLeading:1.45,auxiliary:28,auxiliaryLeading:1.3
+});
+
 const DEFAULT_CONFIG = {
   cover_footer_text: "赵同学AI",
   xhs_style: "composition",
@@ -778,7 +783,7 @@ const DEFAULT_CONFIG = {
   detail_font_size: 40,
   detail_font_weight: 400,
   detail_typography_version: 0,
-  detail_line_height: 1.6,
+  detail_line_height: DETAIL_METRICS.bodyLeading,
   detail_letter_spacing: 0,
   detail_image_gap: VISUAL_RULES.gutter,
   detail_image_width: 820,
@@ -893,6 +898,7 @@ const COMPOSITION_THEMES = [
   { id: "moon-silver", name: "秋月银", background: "#CFD8DC", text: "#1E2321", accent: "#1E2321", secondary: "#1E2321" }
 ];
 
+const COVER_LAYOUT_METRICS = Object.freeze({margin:72,textGap:24,mediaGap:48,captionGap:32,columnGap:24,columnWidth:456});
 const COVER_TEXT_SAFE_MARGIN = VISUAL_RULES.margin;
 const COVER_TEXT_GRID = Object.freeze({...VISUAL_RULES,
   titleGap:VISUAL_RULES.unit*4,descriptionGap:VISUAL_RULES.unit*4,imageGap:VISUAL_RULES.unit*6,
@@ -1012,6 +1018,7 @@ class XHSCardStudioView extends ItemView {
   async onOpen() {
     this.containerEl.empty();
     this.containerEl.addClass("xhs-studio-root");
+    this.containerEl.dataset.workbenchUi="coss";
 
     this.toolbarEl = this.containerEl.createDiv({ cls: "xhs-studio-toolbar" });
     this.bodyEl = this.containerEl.createDiv({ cls: "xhs-studio-body" });
@@ -1046,6 +1053,8 @@ class XHSCardStudioView extends ItemView {
   }
 
   async onClose() {
+    this.closeWorkbenchColorPicker();
+    this.workbenchMenu?.hide();
     this.studioResizeObserver?.disconnect();
     window.cancelAnimationFrame(this.previewFitFrame);
     window.clearTimeout(this.reloadDebounceTimer);
@@ -1070,6 +1079,7 @@ class XHSCardStudioView extends ItemView {
     this.makeButton(actions, "保存参数到笔记", () => this.saveConfigToFrontmatter()).title = "把当前排版配置写入笔记顶部的属性";
     this.makeButton(actions, "导出当前页到本地", () => this.exportCurrentPage());
     this.makeButton(actions, "导出全部到本地", () => this.exportAllPages()).classList.add("xhs-studio-primary-action");
+    this.normalizeWorkbenchComponents(this.toolbarEl);
     this.syncStudioViewport();
   }
 
@@ -1093,15 +1103,193 @@ class XHSCardStudioView extends ItemView {
     this.controlsEl.inert=!visible;
     this.controlsEl.setAttribute('aria-hidden',String(!visible));
     this.toolbarEl?.querySelector('.xhs-studio-controls-toggle')?.setAttribute('aria-expanded',String(visible));
+    this.reserveWorkbenchToolbarSpace();
+    this.layoutWorkbenchToolbar(this.previewShellEl.querySelector(".xhs-cover-style-toolbar"));
     const card=this.previewCanvasEl,wrapper=card?.parentElement;
     if(wrapper?.isConnected)this.fitPreviewScale(wrapper,card);
+  }
+
+  reserveWorkbenchToolbarSpace() {
+    const shell = this.previewShellEl;
+    if (!shell || typeof getComputedStyle !== "function") return;
+    const style = getComputedStyle(shell);
+    const width = shell.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+    if (width <= 0) return;
+    const height = width <= 340 ? 208 : width <= 480 ? 160 : width <= 600 ? 128 : 104;
+    shell.style.setProperty("--xhs-preview-toolbar-space", `${height}px`);
+  }
+
+  colorToHsv(hex) {
+    const color=this.parseCoverHexColor(hex) || '#000000';
+    const [r,g,b]=color.slice(1).match(/../g).map(c=>parseInt(c,16)/255);
+    const max=Math.max(r,g,b),min=Math.min(r,g,b),delta=max-min;
+    let h=delta===0?0:max===r?((g-b)/delta)%6:max===g?(b-r)/delta+2:(r-g)/delta+4;
+    return {h:(h*60+360)%360,s:max===0?0:delta/max,v:max};
+  }
+
+  hsvToColor(h,s,v) {
+    const c=v*s,x=c*(1-Math.abs((h/60)%2-1)),m=v-c;
+    const rgb=h<60?[c,x,0]:h<120?[x,c,0]:h<180?[0,c,x]:h<240?[0,x,c]:h<300?[x,0,c]:[c,0,x];
+    return '#'+rgb.map(n=>Math.round((n+m)*255).toString(16).padStart(2,'0')).join('');
+  }
+
+  closeWorkbenchColorPicker(restoreFocus=false) {
+    const active=this.workbenchColorPicker;if(!active)return;
+    this.workbenchColorPicker=null;active.controller.abort();active.panel.remove();
+    active.source.setAttribute('aria-expanded','false');
+    if(active.dirty)active.source.dispatchEvent(new Event('change',{bubbles:true}));
+    if(restoreFocus && active.source.isConnected)active.source.focus();
+  }
+
+  openWorkbenchColorPicker(source) {
+    if(this.workbenchColorPicker?.source===source){this.closeWorkbenchColorPicker(true);return;}
+    this.closeWorkbenchColorPicker();
+    const controller=new AbortController(),panel=document.body.createDiv({cls:'xhs-color-popover',attr:{role:'dialog','aria-label':'调色板'}});
+    const active={source,panel,controller,dirty:false};this.workbenchColorPicker=active;
+    source.setAttribute('aria-expanded','true');
+    let hsv=this.colorToHsv(source.value),dragging=false;
+    const presets=panel.createDiv({cls:'xhs-color-popover-presets',attr:{role:'group','aria-label':'快捷颜色'}});
+    const colors=[['玫红','#f43f68'],['粉紫','#d844df'],['紫色','#895cf4'],['青绿','#10b981'],['天蓝','#06b6d4'],['绿色','#12b88a'],['草绿','#80ce13'],['黄色','#e9a600'],['橙色','#f47c14']];
+    const area=panel.createDiv({cls:'xhs-color-sv',attr:{tabindex:'0',role:'group','aria-label':'饱和度与明度，左右键调整饱和度，上下键调整明度'}});
+    const thumb=area.createDiv({cls:'xhs-color-sv-thumb',attr:{'aria-hidden':'true'}});
+    const hueRow=panel.createDiv({cls:'xhs-color-hue-row'});
+    const hue=hueRow.createEl('input',{cls:'xhs-color-hue',attr:{type:'range',min:'0',max:'359',step:'1','aria-label':'色相'}});
+    const random=hueRow.createEl('button',{cls:'xhs-color-random',text:'⤨',attr:{type:'button','aria-label':'随机选择颜色'}});
+    const hexRow=panel.createDiv({cls:'xhs-color-hex-row'});
+    const preview=hexRow.createSpan({cls:'xhs-color-current',attr:{'aria-hidden':'true'}});
+    const hex=hexRow.createEl('input',{attr:{type:'text','aria-label':'HEX 色值',spellcheck:'false',maxlength:'7',autocomplete:'off'}});
+    const error=panel.createDiv({cls:'xhs-color-error',attr:{role:'status','aria-live':'polite'}});error.hidden=true;
+    const refresh=(updateHex=true)=>{
+      const color=this.hsvToColor(hsv.h,hsv.s,hsv.v);
+      area.style.backgroundColor=this.hsvToColor(hsv.h,1,1);
+      thumb.style.left=`clamp(8px, ${hsv.s*100}%, calc(100% - 8px))`;thumb.style.top=`clamp(8px, ${(1-hsv.v)*100}%, calc(100% - 8px))`;
+      hue.value=String(Math.round(hsv.h));hue.style.setProperty('--picker-hue',hsv.h);
+      preview.style.background=color;if(updateHex)hex.value=color.toUpperCase();
+      for(const button of presets.children)button.setAttribute('aria-pressed',String(button.dataset.color===color));
+    };
+    const apply=(updateHex=true)=>{
+      const color=this.hsvToColor(hsv.h,hsv.s,hsv.v);
+      if(source.value!==color){source.value=color;active.dirty=true;source.dispatchEvent(new Event('input',{bubbles:true}));}
+      refresh(updateHex);
+    };
+    for(const [name,color] of colors){
+      const button=presets.createEl('button',{attr:{type:'button','aria-label':name,'data-color':color}});button.style.background=color;
+      button.addEventListener('click',()=>{hsv=this.colorToHsv(color);apply();});
+    }
+    const move=event=>{const r=area.getBoundingClientRect();hsv.s=Math.max(0,Math.min(1,(event.clientX-r.left)/r.width));hsv.v=1-Math.max(0,Math.min(1,(event.clientY-r.top)/r.height));apply();};
+    area.addEventListener('pointerdown',event=>{if(event.button!==0)return;event.preventDefault();dragging=true;area.setPointerCapture(event.pointerId);move(event);});
+    area.addEventListener('pointermove',event=>{if(dragging)move(event);});
+    area.addEventListener('pointerup',()=>dragging=false);area.addEventListener('pointercancel',()=>dragging=false);
+    area.addEventListener('keydown',event=>{const step=event.shiftKey ? .1 : .01;if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;event.preventDefault();if(event.key==='ArrowLeft')hsv.s=Math.max(0,hsv.s-step);if(event.key==='ArrowRight')hsv.s=Math.min(1,hsv.s+step);if(event.key==='ArrowUp')hsv.v=Math.min(1,hsv.v+step);if(event.key==='ArrowDown')hsv.v=Math.max(0,hsv.v-step);apply();});
+    hue.addEventListener('input',()=>{hsv.h=Number(hue.value);apply();});
+    random.addEventListener('click',()=>{hsv={h:Math.random()*360,s:.45+Math.random()*.5,v:.65+Math.random()*.3};apply();});
+    hex.addEventListener('input',()=>{const color=this.parseCoverHexColor(hex.value);hex.setAttribute('aria-invalid',String(!color));error.hidden=Boolean(color);error.textContent=color?'':'请输入三位或六位 HEX 色值';if(color){hsv=this.colorToHsv(color);apply(false);}});
+    hex.addEventListener('blur',()=>{if(this.parseCoverHexColor(hex.value))refresh();});
+    panel.addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target===hex){if(this.parseCoverHexColor(hex.value))this.closeWorkbenchColorPicker(true);else hex.focus();}});
+    panel.addEventListener('keydown',event=>{if(event.key!=='Tab')return;const nodes=Array.from(panel.querySelectorAll('button,input,[tabindex="0"]'));const first=nodes[0],last=nodes[nodes.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}});
+    const place=()=>{if(!source.isConnected){this.closeWorkbenchColorPicker();return;}const r=source.getBoundingClientRect(),p=panel.getBoundingClientRect(),gap=8;panel.style.left=Math.max(gap,Math.min(window.innerWidth-p.width-gap,r.left))+'px';const top=r.bottom+gap+p.height<=window.innerHeight-gap?r.bottom+gap:r.top-gap-p.height>=gap?r.top-gap-p.height:Math.max(gap,window.innerHeight-p.height-gap);panel.style.top=top+'px';};
+    refresh();place();area.focus({preventScroll:true});
+    const options={capture:true,signal:controller.signal};
+    document.addEventListener('pointerdown',event=>{if(!panel.contains(event.target)&&event.target!==source)this.closeWorkbenchColorPicker();},options);
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();this.closeWorkbenchColorPicker(true);}},options);
+    window.addEventListener('resize',place,{signal:controller.signal});
+    document.addEventListener('scroll',event=>{if(!panel.contains(event.target))place();},options);
+  }
+
+  layoutWorkbenchToolbar(toolbar) {
+    if(!toolbar || toolbar.classList.contains('xhs-footer-text-toolbar'))return;
+    if(toolbar.dataset.rowLayout==='typed-rows')return;
+    const items=toolbar._xhsToolItems || Array.from(toolbar.children).flatMap(node=>node.classList.contains('xhs-cover-toolbar-settings')?Array.from(node.children):[node]);
+    if(toolbar.dataset.moduleType!=='text') {
+      const row=document.createElement('div');row.className='xhs-toolbar-row xhs-toolbar-object-row';
+      const actions=document.createElement('div');actions.className='xhs-toolbar-object-actions';
+      const label=items.find(node=>node.classList.contains('xhs-cover-module-tools'));
+      if(label)row.append(label);
+      actions.append(...items.filter(node=>node!==label));row.append(actions);
+      toolbar.replaceChildren(row);toolbar.dataset.rowLayout='typed-rows';return;
+    }
+    const hasBackdrop=items.some(node=>node.classList.contains('xhs-cover-opacity-control'));
+    const first=[],second=[];
+    for(const item of items){
+      const label=item.querySelector('.xhs-canvas-toolbar-label')?.textContent.trim();
+      const bottom=item.classList.contains('xhs-cover-action-tools') || label==='行高' || label==='字距'
+        || (hasBackdrop && item.classList.contains('xhs-canvas-align-group'));
+      (bottom?second:first).push(item);
+    }
+    const focused=document.activeElement,fragment=document.createDocumentFragment();
+    for(const nodes of [first,second]){
+      if(!nodes.length)continue;
+      const row=document.createElement('div');row.className='xhs-toolbar-row';row.append(...nodes);fragment.append(row);
+    }
+    toolbar.replaceChildren(fragment);toolbar.dataset.rowLayout='typed-rows';
+    if(focused && toolbar.contains(focused))focused.focus({preventScroll:true});
+  }
+
+  normalizeWorkbenchComponents(scope) {
+    if(!scope?.querySelectorAll)return;
+    if(scope.classList.contains("xhs-cover-style-toolbar"))this.layoutWorkbenchToolbar(scope);
+    for(const source of scope.querySelectorAll('input[type="color"]')) {
+      if(source.dataset.xhsPickerBound)continue;
+      source.dataset.xhsPickerBound='true';source.setAttribute('aria-haspopup','dialog');source.setAttribute('aria-expanded','false');
+      source.addEventListener('click',event=>{event.preventDefault();this.openWorkbenchColorPicker(source);});
+      source.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();this.openWorkbenchColorPicker(source);}});
+    }
+    const nextId=()=>{
+      this.controlIdPrefix ||= `xhs-field-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+      return `${this.controlIdPrefix}-${this.controlIdSequence=(this.controlIdSequence || 0)+1}`;
+    };
+    for(const field of scope.querySelectorAll('.xhs-studio-field')) {
+      const label=field.querySelector('.xhs-studio-label');
+      if(!label)continue;
+      label.id ||= nextId();
+      field.setAttribute('role','group');field.setAttribute('aria-labelledby',label.id);
+      for(const control of field.querySelectorAll('input,textarea,select')) {
+        if(!control.hasAttribute('aria-label') && !control.hasAttribute('aria-labelledby'))control.setAttribute('aria-labelledby',label.id);
+      }
+    }
+    for(const group of scope.querySelectorAll('.xhs-cover-tool-group,.xhs-unified-choice-grid,.xhs-module-library-grid')) {
+      group.setAttribute('role','group');
+      const name=group.querySelector('.xhs-canvas-toolbar-label')?.textContent
+        || group.previousElementSibling?.textContent;
+      if(name && !group.hasAttribute('aria-label'))group.setAttribute('aria-label',name.trim());
+    }
+    for(const button of scope.querySelectorAll('button')) {
+      button.type='button';
+      if(button.classList.contains('is-active') && !button.hasAttribute('aria-pressed'))button.setAttribute('aria-pressed','true');
+      const text=button.textContent.trim();
+      if(!button.hasAttribute('aria-label') && !text)button.setAttribute('aria-label',button.title || '操作');
+      if(text==='删除'){button.dataset.actionIntent='danger';button.setAttribute('aria-label','删除所选模块');}
+      if(text==='恢复默认设置' && !button.title) {
+        button.title=scope.closest?.('.xhs-studio-controls')?.dataset.pageKind==='detail'
+          ?'恢复详情页默认颜色，不影响封面与图片位置':'恢复当前封面模板的排版和颜色，不影响其他模板';
+        button.setAttribute('aria-description',button.title);
+      }
+    }
+    for(const input of scope.querySelectorAll('input[type="number"]')) {
+      if(input.dataset.xhsValidationBound)continue;
+      input.dataset.xhsValidationBound='true';
+      const group=input.closest('.xhs-studio-field,.xhs-cover-tool-group') || input.parentElement;
+      const message=document.createElement('div');message.className='xhs-field-error';message.id=nextId();message.hidden=true;
+      message.setAttribute('role','status');group.append(message);
+      input.setAttribute('aria-describedby',message.id);
+      const validate=event=>{
+        const value=Number(input.value),min=input.min===''?-Infinity:Number(input.min),max=input.max===''?Infinity:Number(input.max);
+        const valid=input.value.trim()!=='' && Number.isFinite(value) && value>=min && value<=max;
+        message.textContent=valid?'':Number.isFinite(min)&&Number.isFinite(max)?`请输入 ${min}–${max} 之间的数值`:'请输入有效数值';
+        message.hidden=valid;input.setAttribute('aria-invalid',String(!valid));input.setCustomValidity(message.textContent);
+        if(!valid){event.stopImmediatePropagation();}
+      };
+      input.addEventListener('input',validate,true);input.addEventListener('change',validate,true);
+    }
   }
 
   makeButton(parent, text, onClick) {
     const button = parent.createEl("button", { text, cls: "xhs-studio-button" });
     button.addEventListener("click", async (event) => {
       event.preventDefault();
+      if (button.disabled) return;
       button.disabled = true;
+      button.setAttribute("aria-busy", "true");
       try {
         await onClick();
       } catch (error) {
@@ -1109,6 +1297,7 @@ class XHSCardStudioView extends ItemView {
         new Notice(`操作失败：${error.message || error}`);
       } finally {
         button.disabled = false;
+        button.removeAttribute("aria-busy");
       }
     });
     return button;
@@ -3004,6 +3193,7 @@ class XHSCardStudioView extends ItemView {
     } else {
       this.renderDetailControls();
     }
+    this.normalizeWorkbenchComponents(this.controlsEl);
     if (pageKindChanged) this.syncStudioViewport();
     this.controlsEl.scrollTop = scrollTop;
     this.controlsEl.scrollLeft = scrollLeft;
@@ -3226,6 +3416,150 @@ class XHSCardStudioView extends ItemView {
   }
 
   layoutCoverText(config=this.config) {
+    // Preserve explicit edits before the legacy content/style preparation runs.
+    const manualLayout=(config.xhs_modules || []).some(m=>!m.custom && (m.type==='text' || m.type==='image') && (m.manualPosition || m.manualSize));
+    const edited=new Map((config.xhs_modules || []).map(m=>[m.id,{
+      ...(manualLayout && m.type==='text'?{fontSize:m.coverTextStyle?.fontSize ?? m.fontSize,lineHeight:m.coverTextStyle?.lineHeight ?? m.lineHeight}:{}),
+      ...(m.manualPosition || manualLayout?{x:m.x,y:m.y}:{}),
+      ...(m.manualSize || (manualLayout && !this.isMagazineSubtitle(m))?{w:m.w,...(m.type==='text' || m.id==='cover-structure-rule'?{}:{h:m.h})}: {})
+    }]));
+    this.prepareCoverTextLayout(config);
+    for(const m of config.xhs_modules || [])Object.assign(m,edited.get(m.id) || {});
+    this.applyCoverLayoutStandards(config);
+  }
+
+  applyCoverLayoutStandards(config=this.config) {
+    const modules=config.xhs_modules || [],id=config.xhs_style==='composition'?config.composition_variant:config.xhs_style;
+    const title=modules.find(m=>m.coverTextRole==='title'),sub=modules.find(m=>m.coverTextRole==='subtitle'),desc=modules.find(m=>m.coverTextRole==='description');
+    if(!title || !sub || !desc)return;
+    const images=modules.filter(m=>m.type==='image' && !m.custom),roles=[title,sub,desc];
+    const visible=m=>Boolean(String(m.text || '').trim()),gap=COVER_LAYOUT_METRICS.textGap,mediaGap=COVER_LAYOUT_METRICS.mediaGap,edge=COVER_LAYOUT_METRICS.margin,bottom=1440-edge;
+    const place=(m,x,y,w,h)=>{
+      if(!m)return;
+      if(!m.manualPosition)Object.assign(m,{x,y});
+      if(!m.manualSize && w!=null)m.w=w;
+      if(m.type==='text'){
+        const measured=this.measureCoverTextFrame(m);m.h=visible(m)?measured.height:0;m.maxLines=Math.max(m.maxLines || 0,measured.lines);
+      }else if(!m.manualSize && h!=null)m.h=h;
+    };
+    const text=(m,x,y,w)=>place(m,x,y,w);
+    const image=(m,x,y,w,h,bleed=false)=>{
+      place(m,x,y,w,h);if(!m)return;
+      if(!m.manualStyle)Object.assign(m,{borderRadius:bleed?0:24,borderWidth:0,objectFit:bleed?'cover':'contain'});
+      if(!['contain','cover'].includes(m.objectFit))m.objectFit='contain';
+    };
+    const fitTitle=(width,height)=>{
+      if(!title.manualSize)title.w=width;
+      if(!title.coverTextStyle?.fontSize && !title.manualFontSize){
+        const base=id==='neon-grid'?132:id==='mosaic'?72:['aside-image','left-image-title'].includes(id)?84:id==='headline-band'?84:100;
+        const sizes=[base,...[112,100,84,72,64].filter(n=>n<base)];
+        for(const size of sizes){title.fontSize=size;if(this.measureCoverTextFrame(title).height<=height)break;}
+      }
+      text(title,title.x,title.y,width);
+    };
+    const stack=(items,x,y,w)=>{
+      let cursor=y;
+      for(const m of items){text(m,x,cursor,w);if(visible(m))cursor=m.y+m.h+gap;}
+      return cursor===y?y:cursor-gap;
+    };
+    const panel=(module,items,full=true)=>{
+      if(!module)return;
+      const shown=items.filter(visible);
+      if(!shown.length){module.h=0;module.background='transparent';return;}
+      const top=Math.max(0,Math.min(...shown.map(m=>m.y))-32),end=Math.min(1440,Math.max(...shown.map(m=>m.y+m.h))+32);
+      this.setCoverBackdrop(config,module,top,end-top,true);
+      if(!full)Object.assign(module,{x:edge,w:936,borderRadius:24});
+    };
+    // Once a core module is dragged/resized, keep the rest of the composition stable.
+    const manualLayout=modules.some(m=>!m.custom && (m.type==='text' || m.type==='image') && (m.manualPosition || m.manualSize));
+    if(manualLayout){
+      for(const m of roles){const measured=this.measureCoverTextFrame(m);m.h=visible(m)?measured.height:0;m.maxLines=Math.max(m.maxLines || 0,measured.lines);}
+      if(['center-banner','solid-poster'].includes(id))panel(modules.find(m=>m.id==='composition-block'),id==='center-banner'?roles:[title,sub]);
+      if(id==='solid-poster')panel(modules.find(m=>m.id==='cover-caption-backdrop'),[desc]);
+      if(id==='nng-red-system')this.layoutComparisonBackdrop(config);
+      if(id==='neon-grid'){
+        const block=modules.find(m=>m.id==='magazine-subtitle-panel');
+        if(block)Object.assign(block,{x:sub.x,y:sub.y,w:sub.w,h:sub.h});
+      }
+      config.title_size=title.fontSize;config.subtitle_size=sub.fontSize;return;
+    }
+    // Prepare exact text widths before measuring the group; no guessed line count.
+    const column=['aside-image','left-image-title'].includes(id);
+    const width=column?456:936;
+    text(sub,edge,edge,id==='neon-grid'?sub.w:width);text(desc,edge,edge,width);
+    fitTitle(width,column?760:id==='mosaic'?240:id==='neon-grid'?680:480);
+    if(id==='headline-band'){
+      const end=stack([title,sub],edge,edge,936),iy=end+mediaGap;
+      const reserve=visible(desc)?COVER_LAYOUT_METRICS.captionGap+desc.h:0;
+      const ih=Math.max(120,Math.min(624,bottom-iy-reserve));
+      image(images[0],edge,iy,936,ih);
+      text(desc,edge,images[0]?images[0].y+images[0].h+COVER_LAYOUT_METRICS.captionGap:end+gap,936);
+    }else if(id==='image-caption'){
+      text(title,edge,edge,936);
+      const sy=title.y+title.h+gap;
+      text(sub,edge,sy,456);text(desc,552,sy,456);
+      const end=Math.max(title.y+title.h,visible(sub)?sub.y+sub.h:0,visible(desc)?desc.y+desc.h:0);
+      const iy=end+mediaGap;image(images[0],edge,iy,936,Math.max(120,Math.min(624,bottom-iy)));
+    }else if(id==='band-columns' || id==='mosaic'){
+      // Stable frames; text gets its own measured region below the image group.
+      if(id==='mosaic')images.forEach((m,i)=>image(m,...MOSAIC_IMAGE_FRAMES[i]));
+      else image(images[0],edge,edge,936,560);
+      const iy=images.length?Math.max(...images.map(m=>m.y+m.h))+mediaGap:edge;
+      text(title,edge,iy,936);
+      const sy=title.y+title.h+gap;
+      text(sub,edge,sy,456);text(desc,552,sy,456);
+      const available=bottom-sy;
+      // Reduce only automatic headline size when copy needs more room.
+      if(Math.max(sub.h,desc.h)>available && !title.manualPosition && !title.coverTextStyle?.fontSize){
+        fitTitle(936,Math.max(80,bottom-iy-gap-Math.max(sub.h,desc.h)));
+        text(title,edge,iy,936);text(sub,edge,title.y+title.h+gap,456);text(desc,552,title.y+title.h+gap,456);
+      }
+    }else if(column){
+      const tx=id==='aside-image'?edge:552,ix=id==='aside-image'?552:edge;
+      fitTitle(456,760);
+      const total=roles.filter(visible).reduce((n,m)=>n+m.h,0)+Math.max(0,roles.filter(visible).length-1)*gap;
+      const ih=Math.max(608,Math.min(1056,total)),iy=Math.max(edge,(1440-ih)/2);
+      image(images[0],ix,iy,456,ih);
+      stack(roles,tx,iy+Math.max(0,(ih-total)/2),456);
+    }else if(id==='center-banner'){
+      image(images[0],0,0,1080,1440,true);
+      const total=roles.filter(visible).reduce((n,m)=>n+m.h,0)+Math.max(0,roles.filter(visible).length-1)*gap;
+      stack(roles,edge,Math.max(edge,720-total/2),936);
+      panel(modules.find(m=>m.id==='composition-block'),roles);
+    }else if(id==='solid-poster'){
+      image(images[0],0,0,1080,1440,true);
+      stack([title,sub],edge,192,936);
+      text(desc,edge,bottom-desc.h,936);
+      panel(modules.find(m=>m.id==='composition-block'),[title,sub]);
+      panel(modules.find(m=>m.id==='cover-caption-backdrop'),[desc]);
+    }else if(id==='nng-red-system'){
+      const total=roles.filter(visible).reduce((n,m)=>n+m.h,0)+Math.max(0,roles.filter(visible).length-1)*gap;
+      stack(roles,edge,Math.max(edge,720-total/2),936);
+      this.layoutComparisonBackdrop(config);
+    }else if(id==='neon-grid'){
+      text(title,edge,128,936);
+      text(sub,edge,title.y+title.h+gap,sub.w);
+      text(desc,edge,Math.max(sub.y+sub.h+mediaGap,Math.min(1088,1270-desc.h)),936);
+      const block=modules.find(m=>m.id==='magazine-subtitle-panel');
+      if(block)Object.assign(block,{x:sub.x,y:sub.y,w:sub.w,h:sub.h});
+    }
+    // Optional rule follows its own text group and never consumes an extra row.
+    const rule=modules.find(m=>m.id==='cover-structure-rule');
+    if(rule && !rule.manualPosition){
+      const anchor=id==='neon-grid'?desc:sub;
+      Object.assign(rule,{x:anchor.x,y:anchor.y+anchor.h+8});
+      if(!rule.manualSize)rule.w=id==='neon-grid'?936:Math.min(anchor.w,160);
+      rule.opacity=visible(anchor)?1:0;
+    }
+    for(const m of roles){
+      // Frames grow with text; explicit colors, widths and positions remain owned by the user.
+      if(m.manualPosition)continue;
+      m.y=Math.max(edge,Math.min(m.y,bottom-m.h));
+    }
+    config.title_size=title.fontSize;config.subtitle_size=sub.fontSize;
+  }
+
+  prepareCoverTextLayout(config=this.config) {
     const g=COVER_TEXT_GRID,span=n=>n*g.column+(n-1)*g.gutter;
     const id=config.xhs_style==="composition"?config.composition_variant:config.xhs_style;
     if(id==='nng-red-system') {this.layoutComparisonCover(config);return;}
@@ -3511,10 +3845,13 @@ class XHSCardStudioView extends ItemView {
     const mode = displayTools.createEl("button", {
       cls: "xhs-cover-mode-select",
       text: this.isTransparentCoverTitle() ? "透明镂空" : "普通标题",
-      attr: { type: "button", "aria-label": "标题显示", "aria-haspopup": "menu" }
+      attr: { type: "button", "aria-label": "标题显示", "aria-haspopup": "menu", "aria-description": "选择普通标题或透明镂空；当前为" + (this.isTransparentCoverTitle() ? "透明镂空" : "普通标题") }
     });
     mode.addEventListener("click", () => {
+      this.workbenchMenu?.hide();
       const menu = new Menu();
+      this.workbenchMenu=menu;
+      menu.dom?.classList.add("xhs-workbench-menu");
       for (const [value, text] of [["normal", "普通标题"], ["cutout", "透明镂空"]]) {
         menu.addItem(item => item.setTitle(text)
           .setChecked((this.isTransparentCoverTitle() ? "cutout" : "normal") === value)
@@ -3737,10 +4074,10 @@ class XHSCardStudioView extends ItemView {
   }
 
   getUnifiedCoverTextColors() {
-    return [{name:'黑色',color:'#000000'},{name:'白色',color:'#ffffff'},
+    return [{name:'黑色',color:'#000000'},
       {name:'皇家蓝',color:'#191970'},{name:'氮气橙',color:'#fb5607'},
       {name:'紫罗兰',color:'#36255c'},{name:'绿松石',color:'#99e1d9'},
-      {name:'深青绿',color:'#022e21'},{name:'柑橘绿',color:'#e4fd97'},
+      {name:'深青绿',color:'#022e21'},
       {name:'糖果蓝',color:'#b2d5e5'},{name:'咖啡豆',color:'#2d120d'}];
   }
 
@@ -3999,14 +4336,22 @@ class XHSCardStudioView extends ItemView {
       detail_background_color: "控制详情页底色",
       detail_text_color: "控制详情页正文与标题颜色"
     }[key] || (role === "subtitle" ? "控制封面副标题颜色" : role === "description" ? "控制封面辅助文案颜色" : "");
-    field.title = purpose;
+    // Help stays available to assistive technology without hover overlays.
     const row=field.createDiv({cls:'xhs-cover-custom-color-row'});
     const swatch=row.createEl('input',{cls:'xhs-cover-custom-swatch',attr:{type:'color','aria-label':`${label}颜色预览`}});
     const input=row.createEl('input',{cls:'xhs-studio-input xhs-cover-custom-hex',attr:{type:'text','aria-label':`${label}色值`,placeholder:'#RRGGBB',spellcheck:'false',autocomplete:'off'}});
+    this.controlIdSequence=(this.controlIdSequence || 0)+1;
+    this.controlIdPrefix=this.controlIdPrefix || `xhs-field-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+    const fieldId=`${this.controlIdPrefix}-${this.controlIdSequence}`;
+    const labelNode=field.querySelector('.xhs-studio-label');
+    if(labelNode){labelNode.id=`${fieldId}-label`;input.setAttribute('aria-labelledby',labelNode.id);}
+    const error=field.createDiv({cls:'xhs-field-error',attr:{id:`${fieldId}-error`,role:'status','aria-live':'polite'}});
+    error.hidden=true;
+    input.setAttribute('aria-describedby',error.id);
+    const setError=message=>{error.textContent=message;error.hidden=!message;field.classList.toggle('is-invalid',Boolean(message));};
     const initial=this.parseCoverHexColor(current() || (key==="cover_highlight_color" ? this.config.accent_color : "")) || '#ffffff';
     swatch.value=initial;input.value=initial.toUpperCase();
-    swatch.title = purpose;
-    input.title = purpose;
+
     if (purpose) {
       swatch.setAttribute("aria-description", purpose);
       input.setAttribute("aria-description", purpose);
@@ -4047,6 +4392,7 @@ class XHSCardStudioView extends ItemView {
       const value=this.parseCoverHexColor(input.value);
       input.setAttribute('aria-invalid',String(!value));
       input.setCustomValidity(value?'':'请输入三位或六位 HEX 色值');
+      setError(value?'':'请输入三位或六位 HEX 色值，例如 #0071E3');
       if(value){swatch.value=value;apply(value,edited);}
       return value;
     };
@@ -4054,7 +4400,7 @@ class XHSCardStudioView extends ItemView {
     input.addEventListener('blur',()=>{const value=validate();if(value)input.value=value.toUpperCase();});
     input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();const value=validate(true);if(value)input.value=value.toUpperCase();else input.reportValidity();}});
     swatch.addEventListener('input',()=>{
-      input.value=swatch.value.toUpperCase();input.setAttribute('aria-invalid','false');input.setCustomValidity('');apply(swatch.value,true);
+      input.value=swatch.value.toUpperCase();input.setAttribute('aria-invalid','false');input.setCustomValidity('');setError('');apply(swatch.value,true);
     });
   }
 
@@ -5219,12 +5565,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   makeSmallControlButton(parent, text, onClick) {
-    const button = parent.createEl("button", { text, cls: "xhs-studio-button" });
-    button.addEventListener("click", (event) => {
-      event.preventDefault();
-      onClick();
-    });
-    return button;
+    return this.makeButton(parent, text, onClick);
   }
 
   getSelectedModule() {
@@ -6549,7 +6890,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   createField(label, parent = this.controlsEl) {
-    const field = parent.createDiv({ cls: "xhs-studio-field" });
+    const field = parent.createDiv({ cls: "xhs-studio-field", attr: { role: "group", "aria-label": label } });
     field.createDiv({ cls: "xhs-studio-label", text: label });
     return field;
   }
@@ -6695,6 +7036,8 @@ class XHSCardStudioView extends ItemView {
     this.previewCanvasEl = card;
     this.fitPreviewScale(wrapper, card);
     this.renderPreviewPager();
+    this.normalizeWorkbenchComponents(this.previewShellEl.querySelector(".xhs-cover-style-toolbar"));
+    this.previewShellEl.querySelectorAll(".xhs-detail-image-actions,.xhs-preview-pager").forEach(node=>this.normalizeWorkbenchComponents(node));
     const restorePreviewPosition = () => {
       if (this.previewRenderVersion !== renderVersion) return;
       this.previewShellEl.scrollTop = shellScrollTop;
@@ -6754,10 +7097,13 @@ class XHSCardStudioView extends ItemView {
   }
 
   renderCanvasModuleToolbar(page) {
+    this.reserveWorkbenchToolbarSpace();
     if (page.kind !== "cover") return;
     const selected = this.getSelectedModule();
     if (!selected) return;
-    const toolbar = this.previewShellEl.createDiv({ cls: "xhs-canvas-toolbar xhs-cover-style-toolbar" });
+    const toolbar = this.previewShellEl.createDiv({ cls: "xhs-canvas-toolbar xhs-cover-style-toolbar xhs-compact-toolbar",
+      attr: { role: "toolbar", "aria-label": "模块编辑" } });
+    toolbar.dataset.moduleType=selected.type;
     const settings = toolbar.createDiv({ cls: "xhs-cover-toolbar-settings" });
     if (selected.coverTextRole === "title") this.renderCoverBackdropTools(settings);
 
@@ -6783,6 +7129,7 @@ class XHSCardStudioView extends ItemView {
         });
         toolbar.classList.add("xhs-footer-text-toolbar");
         footerText.classList.add("xhs-footer-text-input");
+        this.normalizeWorkbenchComponents(toolbar);
         return;
       }
       if (selected.custom) {
@@ -6881,10 +7228,11 @@ class XHSCardStudioView extends ItemView {
         this.makeCanvasToolButton(imageTools, "恢复图片框", () => this.restoreCompositionImageBox(selected));
       }
     }
-    if (selected.locked) return;
+    if (selected.locked) { this.normalizeWorkbenchComponents(toolbar); return; }
     const actionTools = toolbar.createDiv({ cls: "xhs-cover-tool-group xhs-cover-action-tools" });
     this.makeCanvasToolButton(actionTools, "复制", () => this.duplicateSelectedModule());
     this.makeCanvasToolButton(actionTools, "删除", () => this.deleteSelectedModule(), " xhs-cover-delete-tool");
+    this.normalizeWorkbenchComponents(toolbar);
   }
 
   renderDetailControls() {
@@ -6918,6 +7266,8 @@ class XHSCardStudioView extends ItemView {
       this.renderControls();
     });
     resetColors.classList.add("xhs-cover-reset-button");
+    resetColors.title="恢复详情页默认颜色，不影响封面与图片位置";
+    resetColors.setAttribute("aria-description", resetColors.title);
   }
 
   renderDetailAccentControl(parent) {
@@ -6952,7 +7302,7 @@ class XHSCardStudioView extends ItemView {
       ["detail_font_size", "字号", [VISUAL_RULES.body,VISUAL_RULES.bodyLarge].map(value => value * scale)],
       ["detail_font_weight", "字重", [VISUAL_RULES.bodyWeight]],
       ["detail_letter_spacing", "字间距", [0]],
-      ["detail_line_height", "行间距", [VISUAL_RULES.bodyLeading]],
+      ["detail_line_height", "行间距", [DETAIL_METRICS.bodyLeading]],
       ["detail_image_gap", "图片间距", [VISUAL_RULES.gutter * scale]]
     ];
   }
@@ -7044,27 +7394,40 @@ class XHSCardStudioView extends ItemView {
   }
 
   makeCanvasToolButton(parent, text, onClick, extraClass = "") {
-    const button = parent.createEl("button", { cls: `xhs-canvas-tool-button${extraClass}`, text });
-    button.addEventListener("click", (event) => {
+    const parameter=parent.querySelector?.('.xhs-canvas-toolbar-label')?.textContent || '';
+    const accessible=text==='-'?`减小${parameter}`:text==='+'?`增大${parameter}`
+      :text==='删除'?'删除所选模块':text==='复制'?'复制所选模块':text;
+    const button = parent.createEl("button", { cls: `xhs-canvas-tool-button${extraClass}`, text,
+      attr: { type: "button", "aria-label": accessible } });
+    if(text==='删除')button.dataset.actionIntent='danger';
+    button.addEventListener("click", async (event) => {
       event.preventDefault();
-      onClick();
+      if(button.disabled)return;
+      button.disabled=true;button.setAttribute('aria-busy','true');
+      try { await onClick(); }
+      catch(error){console.error('[XHS Cards]',error);new Notice(`操作失败：${error.message || error}`);}
+      finally {button.disabled=false;button.removeAttribute('aria-busy');}
     });
     return button;
   }
 
   renderCanvasTextAlignTools(parent, module) {
-    const group = parent.createDiv({ cls: "xhs-canvas-align-group" });
+    const group = parent.createDiv({ cls: "xhs-canvas-align-group",
+      attr: { role: "group", "aria-label": "文字对齐" } });
     [
       ["left", "左"],
       ["center", "中"],
       ["right", "右"]
     ].forEach(([align, label]) => {
-      this.makeCanvasToolButton(
+      const button = this.makeCanvasToolButton(
         group,
         label,
         () => this.updateSelectedModule({ textAlign: align }),
         (module.textAlign || "left") === align ? " is-active" : ""
       );
+      if(typeof setIcon === "function")setIcon(button, {left:"align-left",center:"align-center",right:"align-right"}[align]);
+      button.setAttribute("aria-label", { left: "左对齐", center: "居中对齐", right: "右对齐" }[align]);
+      button.setAttribute("aria-pressed", String((module.textAlign || "left") === align));
     });
   }
 
@@ -8332,7 +8695,7 @@ class XHSCardStudioView extends ItemView {
     if (MarkdownRenderer?.render && typeof page.markdown === "string") {
       const host = content.createDiv({ cls: "xhs-native-markdown-block markdown-rendered" });
       const prepared = this.prepareNativeDetailSource(page.markdown, tokens);
-      await MarkdownRenderer.render(this.app, prepared.markdown, host, this.activeFile?.path || "", this);
+      await MarkdownRenderer.render(this.app, this.prepareDetailHighlightSource(prepared.markdown), host, this.activeFile?.path || "", this);
       for (let index = 0; index < prepared.runs.length; index++) {
         const anchor = host.querySelector(`[data-xhs-native-images="${index}"]`);
         if (!anchor) throw new Error("Native Markdown image anchor missing; refusing incomplete detail rendering.");
@@ -8413,6 +8776,44 @@ class XHSCardStudioView extends ItemView {
     }
   }
 
+  prepareDetailHighlightSource(markdown) {
+    // Live Preview permits a final open highlight through the end of a line.
+    // Preserve balanced multi-line highlights and never edit the source note.
+    const lines = this.toText(markdown).split("\n");
+    let fence = null, rawBlock = null, openLine = null;
+    const closeOpen = () => {
+      if (openLine !== null) lines[openLine] = lines[openLine].replace(/(\s*)$/, "==$1");
+      openLine = null;
+    };
+    lines.forEach((line, index) => {
+      const boundary = line.match(/^\s{0,3}(`{3,}|~{3,})/);
+      if (boundary) {
+        closeOpen();
+        if (!fence) fence = boundary[1];
+        else if (boundary[1][0] === fence[0] && boundary[1].length >= fence.length) fence = null;
+        return;
+      }
+      if (fence || /^(?: {4}|\t)/.test(line)) { closeOpen(); return; }
+      if (rawBlock) { if (new RegExp(`</${rawBlock}\\s*>`, "i").test(line)) rawBlock = null; return; }
+      const raw = line.match(/<(pre|code|script|style)\b/i);
+      if (raw) {
+        closeOpen();
+        if (!new RegExp(`</${raw[1]}\\s*>`, "i").test(line)) rawBlock = raw[1];
+        return;
+      }
+      if (!line.trim()) { closeOpen(); return; }
+      const tokens = /\\.|(`+)[\s\S]*?\1(?!`)|<[^>]*>|(?<!=)==(?!=)/g;
+      let token;
+      while ((token = tokens.exec(line))) {
+        if (token[0] !== "==") continue;
+        if (openLine !== null) openLine = null;
+        else if (/[^\s=]/.test(line[token.index + 2] || "")) openLine = index;
+      }
+    });
+    closeOpen();
+    return lines.join("\n");
+  }
+
   normalizeDetailHighlights(host) {
     const palette={red:'#e93147',orange:'#ec7500',yellow:'#e0ac00',green:'#08b94e',blue:'#086ddd',purple:'#7852ee'};
     const symbols={'🔴':'red','🟠':'orange','🟡':'yellow','🟢':'green','🔵':'blue','🟣':'purple'};
@@ -8426,11 +8827,19 @@ class XHSCardStudioView extends ItemView {
         while(remaining && (node=walker.nextNode())){const count=Math.min(remaining,node.nodeValue.length);node.nodeValue=node.nodeValue.slice(count);remaining-=count;}
       }
       if(!name)name=Array.from(mark.classList).map(value=>value.match(/^(?:highlight|color|hl)-(red|orange|yellow|green|blue|purple)$/)?.[1]).find(Boolean);
-      const color=palette[name] || this.parseCoverHexColor(name)
-        || mark.style.getPropertyValue('--xhs-emphasis-color') || mark.style.color || mark.style.backgroundColor;
-      if(color)mark.style.setProperty('--xhs-emphasis-color',color);
+      const explicitBackground = mark.style.backgroundColor;
+      const foreground = mark.style.color;
+      const color = palette[name] || this.parseCoverHexColor(name)
+        || mark.style.getPropertyValue('--xhs-emphasis-color');
+      const fallback = color ? `color-mix(in srgb, ${color} 30%, transparent)` : 'rgba(224,172,0,.3)';
+      const background = explicitBackground || (palette[name]
+        ? `var(--highlight-background-${name}, ${fallback})`
+        : name && color ? fallback : `var(--highlight-background, ${fallback})`);
+      mark.style.setProperty('--xhs-mark-background', background);
+      mark.style.setProperty('--xhs-mark-foreground', foreground || 'inherit');
+      mark.dataset.xhsHighlightStyle = 'background';
       if(name)mark.dataset.xhsHighlightColor=name;
-      // Highlight is an inline color wrapper, not a change in the bold title's role.
+      // Keep the bold wrapper as the structural title when styling its highlight.
       const children=Array.from(mark.childNodes).filter(node=>node.nodeType!==3 || node.textContent.trim());
       if(!mark.closest('pre,code') && children.length===1 && children[0].nodeType===1 && children[0].matches('strong,b')) {
         const strong=children[0];strong.replaceWith(...Array.from(strong.childNodes));
@@ -10557,6 +10966,10 @@ class XHSCardStudioView extends ItemView {
     card.style.setProperty('--detail-divider',system.divider.border);
     card.style.setProperty('--detail-divider-width',`${system.divider.width}px`);
     card.style.setProperty('--detail-divider-color',system.divider.color);
+    card.dataset.detailMetrics="20261123";
+    card.dataset.detailUi="coss";
+    card.style.setProperty("--detail-auxiliary-size", `${DETAIL_METRICS.auxiliary * system.body / DETAIL_METRICS.body}px`);
+    card.style.setProperty("--detail-caption-gap", `${12 * system.unit / 8}px`);
     card.dataset.detailPageType=this.config.detail_page_type;
     card.style.setProperty("--module-accent",system.colors.accent);
     card.style.setProperty("--module-surface",system.colors.background);
@@ -10590,7 +11003,11 @@ class XHSCardStudioView extends ItemView {
     card.style.setProperty("--detail-title-size", `${system.title}px`);
     card.style.setProperty("--detail-section-size", `${system.section}px`);
     card.style.setProperty("--detail-caption-size", `${system.caption}px`);
-    if(system.headingSizes)system.headingSizes.forEach((size,index)=>card.style.setProperty(`--detail-h${index+1}-size`,`${size}px`));
+    if(system.headingSizes)system.headingSizes.forEach((size,index)=>{
+      card.style.setProperty(`--detail-h${index+1}-size`,`${size}px`);
+      card.style.setProperty(`--detail-h${index+1}-weight`,String(DETAIL_METRICS.headingWeights[index]));
+      card.style.setProperty(`--detail-h${index+1}-leading`,String(DETAIL_METRICS.headingLeading[index]));
+    });
     card.style.setProperty("--detail-text-width", `${system.content}px`);
     card.style.setProperty("--detail-media-gap", `${this.config.detail_image_gap}px`);
     const vars = {
@@ -10613,7 +11030,7 @@ class XHSCardStudioView extends ItemView {
       "detail_line_height", "detail_letter_spacing", "detail_image_gap", "detail_image_width", "detail_image_layouts"];
     const theme = typeof document === "undefined" ? "" : [document.body.className,
       getComputedStyle(document.body).getPropertyValue("--font-text"), getComputedStyle(document.body).getPropertyValue("--font-monospace")];
-    return JSON.stringify(["bounded-reading-73-card-heading", this.activeFile?.path, theme, ...keys.map((key) => this.config[key])]);
+    return JSON.stringify(["bounded-reading-76-detail-metrics", this.activeFile?.path, theme, ...keys.map((key) => this.config[key])]);
   }
 
   async ensureDetailPagination() {
@@ -11287,7 +11704,7 @@ class XHSCardStudioView extends ItemView {
         : token.text || "";
       const host = parent.createDiv({ cls: "xhs-native-markdown-block markdown-rendered" });
       host.dataset.sourceType = token.type;
-      await MarkdownRenderer.render(this.app, source, host, this.activeFile?.path || "", this);
+      await MarkdownRenderer.render(this.app, this.prepareDetailHighlightSource(source), host, this.activeFile?.path || "", this);
       return;
     }
     if (token.type === "rule") {
@@ -11372,7 +11789,7 @@ class XHSCardStudioView extends ItemView {
   renderInlineMarkdown(parent, text) {
     const pattern = /(<br\s*\/?>|==[^\n]+?==|\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\([^\s)]+\)|\[\[[^\]]+\]\])/gi;
     let cursor = 0;
-    const source = this.toText(text);
+    const source = this.prepareDetailHighlightSource(text);
     source.replace(pattern, (match, _token, offset) => {
       if (offset > cursor) parent.appendChild(document.createTextNode(source.slice(cursor, offset)));
       if (/^<br/i.test(match)) {
@@ -11894,25 +12311,25 @@ class XHSCardStudioView extends ItemView {
     const divider=this.getContentDivider(config);
     const scale = (Number(config.xhs_width) || VISUAL_RULES.width) / VISUAL_RULES.width;
     const body = [VISUAL_RULES.body,VISUAL_RULES.bodyLarge].find(value => Math.abs(value * scale - config.detail_font_size) < .01) || VISUAL_RULES.body;
-    const headingSizes=(config.detail_page_type==="modular"?[60,52,40,36,36,36]:[64,48,40,36,36,36]).map(value=>value*body/VISUAL_RULES.body*scale);
+    const headingSizes=DETAIL_METRICS.headingSizes.map(value=>value*body/DETAIL_METRICS.body*scale);
     const modular=config.detail_page_type==="modular";
-    const spacing={micro:4,icon:8,item:16,card:VISUAL_RULES.cardPadding,control:24,paragraph:24,column:24,module:32,chapter:48};
+    const spacing={micro:4,icon:8,item:16,card:VISUAL_RULES.cardPadding,control:24,paragraph:24,column:24,module:24,chapter:48};
     for(const key of Object.keys(spacing))spacing[key]*=scale;
-    const radius=(modular?24:16)*scale;
+    const radius=24*scale;
     return {version:"unified-detail-1",columns:6,
       unit:VISUAL_RULES.unit*scale,margin:VISUAL_RULES.margin*scale,gutter:VISUAL_RULES.gutter*scale,column:VISUAL_RULES.column*scale,content:VISUAL_RULES.content*scale,
-      title:headingSizes[0],section:headingSizes[1],module:headingSizes[2],body:body*scale,caption:VISUAL_RULES.caption*body/VISUAL_RULES.body*scale,
+      title:headingSizes[0],section:headingSizes[1],module:headingSizes[2],body:body*scale,caption:DETAIL_METRICS.caption*body/DETAIL_METRICS.body*scale,
       ordinal:headingSizes[2],
       colors:this.getDetailPalette(config),
       typography:{
         textFont:CONTENT_FONT_STACK,
         displayFont:CONTENT_FONT_STACK,
         monoFont:CONTENT_FONT_STACK,
-        bodyLeading:VISUAL_RULES.bodyLeading,captionLeading:VISUAL_RULES.captionLeading,headingLeading:VISUAL_RULES.headingLeading,
-        primaryLeading:VISUAL_RULES.primaryLeading,headingWeight:VISUAL_RULES.headingWeight,bodyWeight:VISUAL_RULES.bodyWeight,
+        bodyLeading:DETAIL_METRICS.bodyLeading,captionLeading:DETAIL_METRICS.captionLeading,headingLeading:1.35,
+        primaryLeading:1.25,headingWeight:600,bodyWeight:400,
         metricScale:VISUAL_RULES.metricScale,metricLeading:VISUAL_RULES.metricLeading},
       divider,
-      effects:{cardShadow:`0 ${2*scale}px ${8*scale}px rgba(29,29,31,.045), 0 ${scale}px ${2*scale}px rgba(29,29,31,.04), inset 0 0 0 ${scale}px rgba(29,29,31,.06)`,labelEdge:divider.inset},
+      effects:{cardShadow:"none",labelEdge:divider.inset},
       spacing,
       cardTokens:{padding:spacing.card,gap:spacing.item,'title-gap':spacing.item,'field-gap':spacing.control,'paragraph-gap':spacing.paragraph,
         'item-gap':spacing.item,'column-gap':spacing.item,radius,'marker-size':VISUAL_RULES.marker*scale,'marker-gap':16*scale,
@@ -11973,11 +12390,11 @@ class XHSCardStudioView extends ItemView {
     delete config.detail_title_gradient_stops;
     config.detail_typography_version=3;
     const system = this.getDetailDesignSystem(config);
-    const defaults = [system.body,VISUAL_RULES.bodyWeight,0,VISUAL_RULES.bodyLeading,system.gutter];
+    const defaults = [system.body,VISUAL_RULES.bodyWeight,0,DETAIL_METRICS.bodyLeading,system.gutter];
     this.getDetailStylePresets(config).forEach(([key, label, values], index) => {
       config[key] = values.find(value => Math.abs(value - Number(config[key])) < .001) ?? defaults[index];
     });
-    Object.assign(config,{detail_font_weight:VISUAL_RULES.bodyWeight,detail_letter_spacing:0,detail_line_height:VISUAL_RULES.bodyLeading,detail_image_gap:system.gutter});
+    Object.assign(config,{detail_font_weight:VISUAL_RULES.bodyWeight,detail_letter_spacing:0,detail_line_height:DETAIL_METRICS.bodyLeading,detail_image_gap:system.gutter});
     return config;
   }
 
@@ -12613,7 +13030,7 @@ class XHSCardStudioView extends ItemView {
 
   auditCoverTextLayout(card) {
     const checks={grid:true,bounds:true,lines:true,alignment:true,typography:true,spacing:true,overlap:true,pureTitle:!this.isTitleGradientEnabled()},issues=[],roles=[];
-    const modules=this.config.xhs_modules.filter(module=>module.coverTextRole && module.text);
+    const modules=this.config.xhs_modules.filter(module=>module.coverTextRole && String(module.text || "").trim());
     const media=this.config.xhs_modules.filter(module=>module.type==="image" && !module.custom);
     const id=this.config.xhs_style==="composition"?this.config.composition_variant:this.config.xhs_style;
     for(const module of modules) {
@@ -12623,7 +13040,7 @@ class XHSCardStudioView extends ItemView {
       const measured=this.measureCoverTextFrame(module);
       if(measured.lines>module.maxLines){checks.lines=false;issues.push(`${role}超过${module.maxLines}行`);}
       if(module.x<72 || module.y<72 || module.x+module.w>1008 || module.y+Math.max(module.h,measured.height)>1368){checks.bounds=false;issues.push(`${role}超出安全边距`);}
-      if(!module.manualPosition && !["solid-poster","center-banner","nng-red-system"].includes(id) && (role==="title" ? module.x!==72 : (module.x-72)%160!==0 && module.x!==120)){checks.grid=false;issues.push(`${role}偏离网格轴`);}
+      if(!module.manualPosition && !["solid-poster","center-banner","nng-red-system"].includes(id) && (role==="title" ? module.x!==(id==="left-image-title"?552:72) : (module.x-72)%160!==0 && module.x!==120)){checks.grid=false;issues.push(`${role}偏离网格轴`);}
       const style=getComputedStyle(element);
       if(style.textAlign!==module.textAlign)checks.alignment=false;
       const tracking=style.letterSpacing==="normal"?0:Number.parseFloat(style.letterSpacing);
@@ -12647,27 +13064,33 @@ class XHSCardStudioView extends ItemView {
       if(a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y){checks.overlap=false;issues.push(`${a.coverTextRole}与${b.coverTextRole}重叠`);}
     }
     const title=modules.find(module=>module.coverTextRole==="title"),subtitle=modules.find(module=>module.coverTextRole==="subtitle");
-    const titleGap=id==='headline-band'?16:32;
-    if(title && subtitle && !title.manualPosition && !subtitle.manualPosition && !["left-image-title","neon-grid"].includes(id) && Math.abs(subtitle.y-title.y-title.h-titleGap)>1){checks.spacing=false;issues.push(`标题与副标题间距不为${titleGap}px`);}
     const description=modules.find(module=>module.coverTextRole==="description");
-    const gap=(actual,expected,message)=>{if(Math.abs(actual-expected)>1){checks.spacing=false;issues.push(message);}};
-    const pairedCaption=description && subtitle && Math.abs(description.y-subtitle.y)<1 && description.x>=subtitle.x+subtitle.w;
-    if(description && subtitle && !description.manualPosition && !subtitle.manualPosition && !pairedCaption && !["image-caption","headline-band","center-banner","solid-poster","neon-grid"].includes(id))gap(description.y-subtitle.y-subtitle.h,32,"副标题与辅助文案间距不为32px");
-    if(media.length && !modules.some(module=>module.manualPosition)) {
-      const top=Math.min(...media.map(module=>module.y)),bottom=Math.max(...media.map(module=>module.y+module.h));
-      if(title && ["aside-image","mosaic","band-columns"].includes(id))gap(title.y-bottom,48,"图片与标题间距不为48px");
-      if(description && ["headline-band","center-banner"].includes(id))gap(description.y-bottom,32,"图片与辅助说明间距不为32px");
-      if(subtitle && description && id==="left-image-title") {
-        const groupHeight=description.y+description.h-subtitle.y;
-        gap(subtitle.y-top,Math.max(24,(bottom-top-groupHeight)/2),"第二栏文字组未垂直平衡");
-      }
-      if(subtitle && id==="headline-band") {
-        const spacing=top-subtitle.y-subtitle.h;
-        gap(spacing,16,"副标题与图片间距不为16px");
-      }
-      if(subtitle && description && id==="image-caption") {
-        gap(subtitle.y-description.y,0,"双栏文案未顶对齐");
-        gap(top-Math.max(subtitle.y+subtitle.h,description.y+description.h),48,"双栏文字与图片间距不为48px");
+    const gap=(actual,expected,label)=>{if(Math.abs(actual-expected)>1){checks.spacing=false;issues.push(`${label}应为${expected}px`);}};
+    const manualLayout=this.config.xhs_modules.some(m=>!m.custom && (m.type==='text' || m.type==='image') && (m.manualPosition || m.manualSize));
+    // Validate the same layout grammar used by applyCoverLayoutStandards.
+    // A manual edit owns the composition; exact preset spacing no longer applies.
+    if(!manualLayout){
+      const rules=COVER_LAYOUT_METRICS;
+      if(title && subtitle)gap(subtitle.y-title.y-title.h,rules.textGap,'标题与副标题间距');
+      const paired=['image-caption','band-columns','mosaic'].includes(id);
+      if(subtitle && description && paired)gap(description.y-subtitle.y,0,'双栏文案顶部偏差');
+      if(subtitle && description && !paired && !['headline-band','solid-poster','neon-grid'].includes(id))
+        gap(description.y-subtitle.y-subtitle.h,rules.textGap,'副标题与辅助文案间距');
+      if(media.length){
+        const top=Math.min(...media.map(m=>m.y)),bottom=Math.max(...media.map(m=>m.y+m.h));
+        if(title && ['mosaic','band-columns'].includes(id))gap(title.y-bottom,rules.mediaGap,'图片与标题间距');
+        if(description && id==='headline-band')gap(description.y-bottom,rules.captionGap,'图片与辅助说明间距');
+        if(id==='headline-band' && (subtitle || title)){
+          const anchor=subtitle || title;gap(top-anchor.y-anchor.h,rules.mediaGap,'文字组与图片间距');
+        }
+        if(id==='image-caption' && title){
+          const end=Math.max(...[title,subtitle,description].filter(Boolean).map(m=>m.y+m.h));
+          gap(top-end,rules.mediaGap,'双栏文字与图片间距');
+        }
+        if(['aside-image','left-image-title'].includes(id)){
+          const groupTop=Math.min(...modules.map(m=>m.y)),groupBottom=Math.max(...modules.map(m=>m.y+m.h));
+          gap((groupTop+groupBottom)/2,(top+bottom)/2,'图文组垂直中心偏差');
+        }
       }
     }
     return {checks,issues:[...new Set(issues)],roles};
