@@ -2,12 +2,12 @@
 title: |-
   Obsidian 笔记
   怎么做小红书图文？
-subtitle: "用 XHS Cards 完成封面、图文设计"
+subtitle: "用 XHS Aura Design 完成封面、图文设计"
 title_highlight: "小红书图文？"
-cover_highlight_color: "#ff0000"
+cover_highlight_color: "#0071e3"
 xhs_style: composition
 composition_variant: band-columns
-composition_image: docs/xhs-cards-cover-art-v3.png
+composition_image: docs/readme/latest-card-layout.png
 ---
 
 ## 从 Obsidian 笔记到小红书图文
@@ -16,7 +16,7 @@ composition_image: docs/xhs-cards-cover-art-v3.png
    选一篇已经写好的教程、工作复盘或学习笔记，作为图文的内容底稿。
 
 2. **进入小红卡**\
-   点击 Obsidian 功能区的图片图标，打开 XHS Cards 工作台。
+   点击 Obsidian 功能区的图片图标，打开 XHS Aura Design 工作台。
 
 3. **读取当前笔记**\
    点击「读取当前笔记」，加载正文。下方翻页可查看封面和自动生成的正文卡片。
@@ -29,7 +29,7 @@ composition_image: docs/xhs-cards-cover-art-v3.png
    这篇教程使用「上图下题型」，上方放示例图，下方放主标题和副标题。
 
 2. **换成自己的配图**\
-   双击图片框上传图片。可以试用仓库中的[封面配图](docs/xhs-cards-cover-art-v3.png)。
+   双击图片框上传图片。可以试用仓库中的[封面配图](docs/readme/latest-card-layout.png)。
 
 3. **突出标题关键词**\
    填写封面文案，把「小红书图文」设为高亮字。选中标题后，可在顶部工具栏调整字号和对齐。
@@ -38,8 +38,8 @@ composition_image: docs/xhs-cards-cover-art-v3.png
 
 ## 把 Markdown 正文排成卡片
 
-1. **选择模块化详情页**\
-   翻到正文页，在左侧选「模块化详情页」。本篇的编号列表会排成独立步骤卡。
+1. **选择卡片布局**\
+   翻到正文页，在左侧选「卡片布局」。本篇的编号列表会排成独立步骤卡。
 
 2. **用编号列表组织步骤**\
    每个步骤以加粗短标题开头，下一行写具体操作。

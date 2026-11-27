@@ -1,49 +1,54 @@
 # XHS Aura Design（小红卡）
 
-**将 Obsidian 笔记排版为可发布的小红书图文卡片。**
+**把 Obsidian 的 Markdown 笔记，做成带封面、可分页的小红书图文。**
 
-用一篇已有的教程、工作复盘或学习笔记做底稿，在同一个工作台完成封面编辑、正文分页和图片导出。
+直接读取已有的教程、工作复盘或学习笔记，在同一个工作台完成封面排版、正文卡片与高清 PNG 导出。
 
-[![XHS Aura Design 工作台，左侧是 Obsidian 笔记，右侧是成品封面](docs/readme/cover-editor.png)](docs/readme/cover-editor.png)
+[下载最新版本](https://github.com/Jackiechan24/xhs_card_studio/releases/latest) · [查看使用示例](example-note.md)
 
-## 产品特点
+## 可以做什么
 
-- **Markdown 自动排成卡片。** 直接读取 Obsidian 笔记，沿用标题和列表结构自动分页。编号列表可以排成独立步骤卡，适合教程和操作流程。
-- **按内容选择封面模板。** 教程可以用上图下题突出主题，前后效果可以用上下对比展示。从合适的版式开始，省去搭建封面的时间。
-- **封面排版可自由调整。** 换上自己的配图、文案和配色，独立移动标题、副标题与辅助文案，也可以添加标签和角标框。
-- **整组或单页导出高清 PNG。** 封面和正文卡片可一次全部导出，也可以单独导出当前页，方便补发或替换。
+- **十种封面模板。** 上题中图、上图下题、主辅三图、左右图文、满版叠字、杂志标题和上下对比等布局，适配教程、工具介绍与效果展示。
+- **封面自由编辑。** 自定义图片、主标题、副标题、辅助文案与配色；独立移动、缩放模块，添加图片 Logo、描边标签、胶囊标签和角标框。
+- **Markdown 自动排版与分页。** 识别标题、段落、步骤、清单、表格与图片，生成相应内容模块。支持用单独一行 `---` 指定分页。
+- **卡片布局与文档布局。** 结构化内容使用卡片，连续阅读使用文档；支持单双列内容编排，统一标题层级、模块间距与卡片留白。
+- **自定义背景色和字体色。** 适配深浅背景。普通 `==文字==` 显示蓝色字体，`==🔴文字==` 等带颜色标记的写法保留背景高亮。
+- **单页或整组导出。** 封面与全部详情页可以一次导出高清 PNG，也可以只导出修改后的当前页。排版参数可保存到笔记，方便继续编辑。
 
-## 安装与使用
+## 最新效果示例
 
-在桌面版 Obsidian 打开「设置 → 第三方插件 → 浏览」，搜索 **XHS Aura Design** 并安装启用。也可以从 [官方插件页](https://community.obsidian.md/plugins/xhs-card-studio) 打开安装入口。
-
-手动安装时，从 [GitHub Releases](https://github.com/Jackiechan24/xhs_card_studio/releases) 下载同一版本的 `main.js`、`manifest.json` 和 `styles.css`，放入知识库的 `.obsidian/plugins/xhs-card-studio/` 目录，重启 Obsidian 后启用插件。
-
-1. 打开 Markdown 笔记，点击 Obsidian 功能区的图片图标，或在命令面板运行「打开小红书图文工作台」。
-2. 选择封面模板，填写文案，双击图片框添加配图。
-3. 翻页检查正文卡片，导出当前页或全部页面。需要继续调整时，可以把排版参数保存到笔记。
-
-## 图文示例
-
-[示例笔记](example-note.md)展示了如何从打开笔记开始，完成封面、正文分页和 PNG 导出。
+以下四张图片由 **0.9.13** 插件实际生成，点击可查看完整图片。
 
 <table>
   <tr>
-    <td align="center"><strong>打开笔记</strong><br><a href="docs/readme/02-open-note.png"><img src="docs/readme/02-open-note.png" width="390" alt="打开笔记的图文步骤卡"></a></td>
-    <td align="center"><strong>制作封面</strong><br><a href="docs/readme/03-make-cover.png"><img src="docs/readme/03-make-cover.png" width="390" alt="制作封面的图文步骤卡"></a></td>
+    <td width="50%" align="center"><strong>封面：图文组合与关键词高亮</strong><br><a href="docs/readme/latest-cover.png"><img src="docs/readme/latest-cover.png" width="390" alt="XHS Aura Design 封面：笔记截图、标题与蓝色关键词"></a></td>
+    <td width="50%" align="center"><strong>卡片布局：教程步骤</strong><br><a href="docs/readme/latest-card-layout.png"><img src="docs/readme/latest-card-layout.png" width="390" alt="浅色卡片布局，展示读取笔记、制作封面、检查正文与导出图片四个步骤"></a></td>
   </tr>
   <tr>
-    <td align="center"><strong>排版正文</strong><br><a href="docs/readme/04-markdown-cards.png"><img src="docs/readme/04-markdown-cards.png" width="390" alt="排版正文的图文步骤卡"></a></td>
-    <td align="center"><strong>检查并导出</strong><br><a href="docs/readme/05-export.png"><img src="docs/readme/05-export.png" width="390" alt="检查并导出的图文步骤卡"></a></td>
+    <td width="50%" align="center"><strong>深色详情：表格与高亮</strong><br><a href="docs/readme/latest-dark-layout.png"><img src="docs/readme/latest-dark-layout.png" width="390" alt="深色详情页，展示浅色文字、蓝色高亮与深色表格卡片"></a></td>
+    <td width="50%" align="center"><strong>文档布局：连续阅读</strong><br><a href="docs/readme/latest-document-layout.png"><img src="docs/readme/latest-document-layout.png" width="390" alt="文档布局，展示章节层级、正文段落和蓝色高亮"></a></td>
   </tr>
 </table>
+
+## 安装与使用
+
+推荐从 [GitHub Releases](https://github.com/Jackiechan24/xhs_card_studio/releases/latest) 下载同一版本的 `main.js`、`manifest.json` 和 `styles.css`，放入知识库的 `.obsidian/plugins/xhs-card-studio/` 目录，在 Obsidian 的第三方插件设置中启用。插件 ID 保持为 `xhs-card-studio`。
+
+也可以通过 [Obsidian 插件入口](https://community.obsidian.md/plugins/xhs-card-studio) 查找插件。
+
+1. 打开一篇 Markdown 笔记，点击功能区图片图标，或运行命令「打开小红书图文工作台」。
+2. 点击「读取当前笔记」，选择封面模板，双击图片框添加配图，填写文案并调整配色。
+3. 翻到详情页，选择「卡片布局」或「文档布局」，设置字号、背景色和字体色。
+4. 逐页检查，导出当前页或全部页面。需要继续编辑时，点击「保存参数到笔记」。
+
+[示例笔记](example-note.md)包含四个阶段的 Markdown 写法和手动分页示例。
 
 排版和 PNG 生成在本地完成。导入图片会复制到知识库，导出文件写入你选择的位置。「保存参数到笔记」会更新笔记属性。引用远程图片时，预览或导出可能向图片原地址发起请求。
 
 ## English Quick Start
 
-XHS Aura Design turns Markdown notes into Xiaohongshu covers and multi-page image cards. It combines editable cover templates, automatic pagination, and high-resolution PNG export in one workspace.
+XHS Aura Design turns Obsidian Markdown notes into Xiaohongshu covers and multi-page image posts. It includes ten editable cover templates, card and document layouts, custom colors, automatic pagination, and single-page or batch PNG export.
 
-In Obsidian desktop, open **Settings → Community plugins → Browse**, search for **XHS Aura Design**, and install and enable it. Open a note and click the image icon in the ribbon. Choose a cover template, preview the cards, and export the current page or the full set.
+Download `main.js`, `manifest.json`, and `styles.css` from the [latest release](https://github.com/Jackiechan24/xhs_card_studio/releases/latest), place them in `.obsidian/plugins/xhs-card-studio/`, and enable the plugin in Obsidian desktop. Open a note, launch the image workbench, read the note, customize the cover, review the detail pages, and export.
 
 [MIT License](LICENSE)
