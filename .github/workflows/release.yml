@@ -32,6 +32,10 @@ jobs:
         run: |
           node --check main.js
           node tests/cover-layout-standards.test.js
+          node tests/content-font-selection.test.js
+          node tests/cover-default-templates.test.js
+          node tests/cover-highlight-color.test.js
+          node tests/detail-design-cleanup.test.js
           node tests/cover-text-grid.test.js
           node tests/cover-template-state.test.js
           node tests/headline-position-stability.test.js
@@ -49,5 +53,5 @@ jobs:
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$RELEASE_VERSION" main.js manifest.json styles.css --verify-tag --title "XHS Cards $RELEASE_VERSION" --notes-file RELEASE_NOTES.md
+        run: gh release create "$RELEASE_VERSION" main.js manifest.json styles.css --verify-tag --title "XHS Aura Design $RELEASE_VERSION" --notes-file RELEASE_NOTES.md
 

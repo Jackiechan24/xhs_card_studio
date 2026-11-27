@@ -666,7 +666,7 @@ const VISUAL_RULES = Object.freeze({
   subtitle:40,subtitleLeading:1.35,description:36,descriptionLeading:1.5,
   cardPadding:32,cardGap:32,titleGap:16,fieldGap:24,radius:8,marker:8,
   background:'#f5f5f7',ink:'#1d1d1f',bodyInk:'#3a3a3c',muted:'#595959',accent:'#0066cc',surface:'#ffffff',media:'#f5f5f5',
-  dividerWidth:2,dividerColor:'#e1e1e1',
+  dividerWidth:1,dividerColor:'#e1e1e1',
   capacityReserve:64,tabMinHeight:240,tabHeightRatio:.6,parallelHeightRatio:.5,
   paginationReserve:8,paginationMinLines:1,
   valueLines:3,descriptionLines:4,noteLines:3,groupTitleLines:3,groupBodyLines:4,
@@ -678,7 +678,29 @@ const DETAIL_METRICS = Object.freeze({
   body:40,bodyLeading:1.55,caption:32,captionLeading:1.45,auxiliary:28,auxiliaryLeading:1.3
 });
 
+// Detail layout owns its dimensions independently of cover and editor defaults.
+const DETAIL_DESIGN = Object.freeze({
+  canvas:Object.freeze({width:1080,height:1440,margin:72,content:936,unit:8,columns:6}),
+  card:Object.freeze({padding:32,radius:24,gap:24}),
+  space:Object.freeze({titleBody:16,item:16,paragraph:24,group:24,column:24,imageCaption:12,sectionContent:24,sectionBefore:48}),
+  divider:Object.freeze({width:1,before:8,after:7}),
+  bullet:Object.freeze({size:8,gap:16,indent:24}),
+  colors:Object.freeze({accent:"#0071e3",textHighlight:"#0071e3"}),
+  bodySizes:Object.freeze([36,40]),
+  typography:DETAIL_METRICS
+});
+
+const LEGACY_DETAIL_KEYS=Object.freeze(['detail_title_highlight','detail_title_highlight_color','detail_title_color_mode','detail_title_gradient_from','detail_title_gradient_to','detail_title_gradient_stops']);
+function removeLegacyDetailConfig(config){
+  if(!config || typeof config!=='object')return false;
+  let changed=false;
+  for(const key of LEGACY_DETAIL_KEYS)if(Object.prototype.hasOwnProperty.call(config,key)){delete config[key];changed=true;}
+  return changed;
+}
+
 const DEFAULT_CONFIG = {
+  cover_font_family: "sf-pro",
+  detail_font_family: "sf-pro",
   cover_footer_text: "赵同学AI",
   xhs_style: "composition",
   composition_layout: "vertical",
@@ -777,9 +799,6 @@ const DEFAULT_CONFIG = {
   detail_module_layout: "auto",
   detail_text_color: VISUAL_RULES.ink,
   detail_text_color_custom: false,
-  detail_title_highlight: "",
-  detail_title_color_mode: "solid",
-  detail_title_highlight_color: VISUAL_RULES.accent,
   detail_font_size: 40,
   detail_font_weight: 400,
   detail_typography_version: 0,
@@ -862,13 +881,13 @@ const COMPOSITION_PRESETS = [
   },
   {
     id: "band-columns", name: "上图下标题", family: "vertical", theme: "sea-glass", titleSize: 112, subtitleSize: 42,
-    images: [[0,0,1080,810]], block: [72,842,936,3],
+    images: [[72,72,936,702]], block: [72,842,936,3],
     title: [72,888,936,250], subtitle: [72,1180,430,85],
     description: [560,1180,448,150]
   },
   {
     id: "left-image-title", name: "左下图右上题", family: "horizontal", theme: "heritage", titleSize: 110, subtitleSize: 41,
-    images: [[0,408,600,900]], block: [648,740,360,3],
+    images: [[0,408,600,800]], block: [648,740,360,3],
     title: [180,100,828,240], subtitle: [648,620,360,90],
     description: [648,780,360,180]
   }
@@ -947,6 +966,7 @@ class XHSCardStudioPlugin extends Plugin {
       let migrated = false;
       Object.values(this.settings.drafts).forEach((draft) => {
         migrated = removeReferenceLayoutConfig(draft) || migrated;
+        migrated = removeLegacyDetailConfig(draft) || migrated;
       });
       if (migrated) await this.saveSettings();
     }
@@ -957,7 +977,7 @@ class XHSCardStudioPlugin extends Plugin {
       if (!drafts || !Object.prototype.hasOwnProperty.call(drafts, oldPath)) return;
       drafts[file.path] = drafts[oldPath];
       delete drafts[oldPath];
-      void this.saveSettings().catch(error => console.error("[XHS Cards] 保存重命名后的草稿失败", error));
+      void this.saveSettings().catch(error => console.error("[XHS Aura Design] 保存重命名后的草稿失败", error));
     }));
 
     this.registerView(VIEW_TYPE, (leaf) => new XHSCardStudioView(leaf, this));
@@ -1008,7 +1028,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   getDisplayText() {
-    return "小红书图文工作台";
+    return "XHS Aura Design";
   }
 
   getIcon() {
@@ -1073,7 +1093,7 @@ class XHSCardStudioView extends ItemView {
       this.controlsVisibleOverride=this.controlsEl.classList.contains('is-controls-hidden');
       this.syncStudioViewport();
     });
-    heading.createDiv({ cls: "xhs-studio-title", text: "XHS Cards" });
+    heading.createDiv({ cls: "xhs-studio-title", text: "XHS Aura Design" });
     const actions = this.toolbarEl.createDiv({ cls: "xhs-studio-actions" });
     this.makeButton(actions, "读取当前笔记", () => this.reloadFromActiveFile()).title = "重新读取当前 Markdown 笔记的正文和配置，刷新预览";
     this.makeButton(actions, "保存参数到笔记", () => this.saveConfigToFrontmatter()).title = "把当前排版配置写入笔记顶部的属性";
@@ -1115,7 +1135,7 @@ class XHSCardStudioView extends ItemView {
     const style = getComputedStyle(shell);
     const width = shell.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
     if (width <= 0) return;
-    const height = width <= 340 ? 208 : width <= 480 ? 160 : width <= 600 ? 128 : 104;
+    const height = 64;
     shell.style.setProperty("--xhs-preview-toolbar-space", `${height}px`);
   }
 
@@ -1197,32 +1217,54 @@ class XHSCardStudioView extends ItemView {
   }
 
   layoutWorkbenchToolbar(toolbar) {
-    if(!toolbar || toolbar.classList.contains('xhs-footer-text-toolbar'))return;
-    if(toolbar.dataset.rowLayout==='typed-rows')return;
-    const items=toolbar._xhsToolItems || Array.from(toolbar.children).flatMap(node=>node.classList.contains('xhs-cover-toolbar-settings')?Array.from(node.children):[node]);
-    if(toolbar.dataset.moduleType!=='text') {
-      const row=document.createElement('div');row.className='xhs-toolbar-row xhs-toolbar-object-row';
-      const actions=document.createElement('div');actions.className='xhs-toolbar-object-actions';
-      const label=items.find(node=>node.classList.contains('xhs-cover-module-tools'));
-      if(label)row.append(label);
-      actions.append(...items.filter(node=>node!==label));row.append(actions);
-      toolbar.replaceChildren(row);toolbar.dataset.rowLayout='typed-rows';return;
+    if (!toolbar || toolbar.classList.contains('xhs-footer-text-toolbar')) return;
+    if (toolbar.dataset.rowLayout !== 'single-row') {
+      const items = Array.from(toolbar.children).flatMap(node =>
+        node.classList.contains('xhs-cover-toolbar-settings') ? Array.from(node.children) : [node]);
+      const row = document.createElement('div');
+      row.className = 'xhs-toolbar-row xhs-toolbar-single-row';
+      const groups = new Map();
+      const add = (name, node) => {
+        if (!groups.has(name)) {
+          const group = document.createElement('div');
+          group.className = 'xhs-toolbar-function-group';
+          group.dataset.function = name;
+          group.setAttribute('role', 'group');
+          group.setAttribute('aria-label', name);
+          groups.set(name, group);
+        }
+        groups.get(name).append(node);
+      };
+      for (const item of items) {
+        const label = item.querySelector('.xhs-canvas-toolbar-label')?.textContent.trim();
+        const name = item.classList.contains('xhs-cover-module-tools') ? '当前模块'
+          : item.classList.contains('xhs-cover-action-tools') ? '模块操作'
+          : item.classList.contains('xhs-canvas-align-group') ? '对齐'
+          : label === '行高' || label === '字距' ? '文字间距'
+          : item.classList.contains('xhs-cover-opacity-control') || item.querySelector('.xhs-cover-mode-select') ? '标题显示'
+          : toolbar.dataset.moduleType === 'text' ? '字体' : '模块设置';
+        add(name, item);
+      }
+      for (const name of ['当前模块', '标题显示', '字体', '对齐', '文字间距', '模块设置', '模块操作']) {
+        if (groups.has(name)) row.append(groups.get(name));
+      }
+      const focused = document.activeElement;
+      toolbar.replaceChildren(row);
+      toolbar.dataset.rowLayout = 'single-row';
+      if (focused && toolbar.contains(focused)) focused.focus({preventScroll:true});
+      requestAnimationFrame(() => { if (toolbar.isConnected) this.layoutWorkbenchToolbar(toolbar); });
     }
-    const hasBackdrop=items.some(node=>node.classList.contains('xhs-cover-opacity-control'));
-    const first=[],second=[];
-    for(const item of items){
-      const label=item.querySelector('.xhs-canvas-toolbar-label')?.textContent.trim();
-      const bottom=item.classList.contains('xhs-cover-action-tools') || label==='行高' || label==='字距'
-        || (hasBackdrop && item.classList.contains('xhs-canvas-align-group'));
-      (bottom?second:first).push(item);
-    }
-    const focused=document.activeElement,fragment=document.createDocumentFragment();
-    for(const nodes of [first,second]){
-      if(!nodes.length)continue;
-      const row=document.createElement('div');row.className='xhs-toolbar-row';row.append(...nodes);fragment.append(row);
-    }
-    toolbar.replaceChildren(fragment);toolbar.dataset.rowLayout='typed-rows';
-    if(focused && toolbar.contains(focused))focused.focus({preventScroll:true});
+    const row = toolbar.firstElementChild;
+    if (!row || toolbar.clientWidth <= 0) return;
+    // Measure the intrinsic row before fitting; resizing never accumulates scale.
+    row.style.zoom = '1';
+    row.style.width = 'max-content';
+    const style = getComputedStyle(toolbar);
+    const available = toolbar.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+    const natural = row.scrollWidth;
+    const scale = Math.min(1, available / Math.max(1, natural));
+    row.style.zoom = String(scale);
+    row.style.width = `${Math.min(natural, available / scale)}px`;
   }
 
   normalizeWorkbenchComponents(scope) {
@@ -1293,7 +1335,7 @@ class XHSCardStudioView extends ItemView {
       try {
         await onClick();
       } catch (error) {
-        console.error("[XHS Cards]", error);
+        console.error("[XHS Aura Design]", error);
         new Notice(`操作失败：${error.message || error}`);
       } finally {
         button.disabled = false;
@@ -1320,7 +1362,7 @@ class XHSCardStudioView extends ItemView {
       const request = { file };
       this.loadingNote = request;
       void this.reloadFromActiveFile(file, preserveCover).catch(error => {
-        console.error('[XHS Cards]',error);
+        console.error('[XHS Aura Design]',error);
         new Notice(`预览更新失败：${error.message || error}`);
       }).finally(() => {
         if (this.loadingNote === request) this.loadingNote = null;
@@ -1375,6 +1417,7 @@ class XHSCardStudioView extends ItemView {
 
   normalizeConfig(frontmatter, fallbackTitle) {
     const merged = Object.assign({}, DEFAULT_CONFIG, frontmatter || {});
+    for(const key of ["cover_font_family","detail_font_family"])merged[key]="sf-pro";
     const states = frontmatter?.cover_template_settings;
     const activeTemplates = new Set(this.getUnifiedCoverTemplates().map(choice =>
       choice.style === "composition" ? `composition:${choice.id}` : choice.style));
@@ -1548,11 +1591,7 @@ class XHSCardStudioView extends ItemView {
     merged.detail_text_color = this.toColor(merged.detail_text_color, DEFAULT_CONFIG.detail_text_color);
     merged.detail_text_color_custom = frontmatter.detail_text_color_custom === true
       || (frontmatter.detail_text_color_custom == null && merged.detail_text_color !== DEFAULT_CONFIG.detail_text_color);
-    merged.detail_title_highlight = this.toText(merged.detail_title_highlight);
-    merged.detail_title_color_mode = ["solid", "gradient"].includes(merged.detail_title_color_mode)
-      ? merged.detail_title_color_mode
-      : DEFAULT_CONFIG.detail_title_color_mode;
-    merged.detail_title_highlight_color = this.toColor(merged.detail_title_highlight_color, DEFAULT_CONFIG.detail_title_highlight_color);
+    removeLegacyDetailConfig(merged);
     this.migrateAppleProductColorSelection(merged);
     this.normalizeDetailDesignConfig(merged);
     merged.detail_image_width = DEFAULT_CONFIG.detail_image_width;
@@ -2051,7 +2090,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   parseHighlightedDetailTitleSegments(text) {
-    return this.parseHighlightedTextSegments(text, this.config.detail_title_highlight, true);
+    return this.parseHighlightedTextSegments(text, "", true);
   }
 
   normalizeModules(value) {
@@ -3374,11 +3413,11 @@ class XHSCardStudioView extends ItemView {
     return result;
   }
 
-  measureCoverText(text,width,size,leading,weight,balanced=false,tracking=0,wrapLongWords=false) {
+  measureCoverText(text,width,size,leading,weight,balanced=false,tracking=0,wrapLongWords=false,fontFamily=this.getContentFontFamily()) {
     if(!text)return {height:0,lines:0};
     if(typeof document!=="undefined" && document.body) {
       const probe=document.createElement("div");
-      probe.style.cssText=`position:fixed;left:-20000px;top:0;width:${width}px;padding:0;margin:0;border:0;font-family:${CONTENT_FONT_STACK};font-size:${size}px;font-weight:${weight};line-height:${leading}px;letter-spacing:${tracking}px;white-space:pre-wrap;word-break:normal;overflow-wrap:${wrapLongWords?"anywhere":"normal"};text-wrap:${balanced?"balance":"wrap"};`;
+      probe.style.cssText=`position:fixed;left:-20000px;top:0;width:${width}px;padding:0;margin:0;border:0;font-family:${fontFamily};font-size:${size}px;font-weight:${weight};line-height:${leading}px;letter-spacing:${tracking}px;white-space:pre-wrap;word-break:normal;overflow-wrap:${wrapLongWords?"anywhere":"normal"};text-wrap:${balanced?"balance":"wrap"};`;
       probe.textContent=text;document.body.append(probe);
       const height=probe.getBoundingClientRect().height;probe.remove();
       return {height,lines:Math.round(height/leading)};
@@ -3395,18 +3434,18 @@ class XHSCardStudioView extends ItemView {
     return this.isMagazineSubtitle(module) ? 16 : 4;
   }
 
-  measureCoverTextFrame(module,text=module.text) {
+  measureCoverTextFrame(module,text=module.text,config=this.config) {
     const padding=this.getCoverTextFramePadding(module);
     const measured=this.measureCoverText(String(text || "").replace(/\{\{([^{}]+)\}\}/g,"$1"),
       Math.max(1,module.w-padding*2),module.fontSize,module.fontSize*module.lineHeight,module.fontWeight,
-      module.coverTextRole==="title",module.letterSpacing,this.isMagazineSubtitle(module));
+      module.coverTextRole==="title",module.letterSpacing,this.isMagazineSubtitle(module),this.getContentFontFamily("cover",config));
     return {...measured,padding,height:measured.height+padding*2};
   }
 
-  measureCoverTextWidth(text,size,weight,tracking=0) {
+  measureCoverTextWidth(text,size,weight,tracking=0,config=this.config) {
     const lines=String(text || "").split(/\r?\n/);
     const ctx=typeof document!=="undefined"?document.createElement("canvas").getContext("2d"):null;
-    if(ctx)ctx.font=`${weight} ${size}px ${CONTENT_FONT_STACK}`;
+    if(ctx)ctx.font=`${weight} ${size}px ${this.getContentFontFamily("cover",config)}`;
     return Math.max(0,...lines.map(line=>(ctx?ctx.measureText(line).width:Array.from(line).reduce((width,char)=>width+(/[^\u0000-\u007f]/.test(char)?size:size*0.6),0))+Array.from(line).length*tracking));
   }
 
@@ -3439,7 +3478,7 @@ class XHSCardStudioView extends ItemView {
       if(!m.manualPosition)Object.assign(m,{x,y});
       if(!m.manualSize && w!=null)m.w=w;
       if(m.type==='text'){
-        const measured=this.measureCoverTextFrame(m);m.h=visible(m)?measured.height:0;m.maxLines=Math.max(m.maxLines || 0,measured.lines);
+        const measured=this.measureCoverTextFrame(m,undefined,config);m.h=visible(m)?measured.height:0;m.maxLines=Math.max(m.maxLines || 0,measured.lines);
       }else if(!m.manualSize && h!=null)m.h=h;
     };
     const text=(m,x,y,w)=>place(m,x,y,w);
@@ -3447,13 +3486,14 @@ class XHSCardStudioView extends ItemView {
       place(m,x,y,w,h);if(!m)return;
       if(!m.manualStyle)Object.assign(m,{borderRadius:bleed?0:24,borderWidth:0,objectFit:bleed?'cover':'contain'});
       if(!['contain','cover'].includes(m.objectFit))m.objectFit='contain';
+      m.aspectRatio=m.w/m.h;
     };
     const fitTitle=(width,height)=>{
       if(!title.manualSize)title.w=width;
       if(!title.coverTextStyle?.fontSize && !title.manualFontSize){
         const base=id==='neon-grid'?132:id==='mosaic'?72:['aside-image','left-image-title'].includes(id)?84:id==='headline-band'?84:100;
         const sizes=[base,...[112,100,84,72,64].filter(n=>n<base)];
-        for(const size of sizes){title.fontSize=size;if(this.measureCoverTextFrame(title).height<=height)break;}
+        for(const size of sizes){title.fontSize=size;if(this.measureCoverTextFrame(title,undefined,config).height<=height)break;}
       }
       text(title,title.x,title.y,width);
     };
@@ -3473,7 +3513,7 @@ class XHSCardStudioView extends ItemView {
     // Once a core module is dragged/resized, keep the rest of the composition stable.
     const manualLayout=modules.some(m=>!m.custom && (m.type==='text' || m.type==='image') && (m.manualPosition || m.manualSize));
     if(manualLayout){
-      for(const m of roles){const measured=this.measureCoverTextFrame(m);m.h=visible(m)?measured.height:0;m.maxLines=Math.max(m.maxLines || 0,measured.lines);}
+      for(const m of roles){const measured=this.measureCoverTextFrame(m,undefined,config);m.h=visible(m)?measured.height:0;m.maxLines=Math.max(m.maxLines || 0,measured.lines);}
       if(['center-banner','solid-poster'].includes(id))panel(modules.find(m=>m.id==='composition-block'),id==='center-banner'?roles:[title,sub]);
       if(id==='solid-poster')panel(modules.find(m=>m.id==='cover-caption-backdrop'),[desc]);
       if(id==='nng-red-system')this.layoutComparisonBackdrop(config);
@@ -3491,19 +3531,20 @@ class XHSCardStudioView extends ItemView {
     if(id==='headline-band'){
       const end=stack([title,sub],edge,edge,936),iy=end+mediaGap;
       const reserve=visible(desc)?COVER_LAYOUT_METRICS.captionGap+desc.h:0;
-      const ih=Math.max(120,Math.min(624,bottom-iy-reserve));
-      image(images[0],edge,iy,936,ih);
+      const ih=Math.max(120,Math.min(810,bottom-iy-reserve));
+      const iw=ih*4/3;
+      image(images[0],(1080-iw)/2,iy,iw,ih);
       text(desc,edge,images[0]?images[0].y+images[0].h+COVER_LAYOUT_METRICS.captionGap:end+gap,936);
     }else if(id==='image-caption'){
       text(title,edge,edge,936);
       const sy=title.y+title.h+gap;
       text(sub,edge,sy,456);text(desc,552,sy,456);
       const end=Math.max(title.y+title.h,visible(sub)?sub.y+sub.h:0,visible(desc)?desc.y+desc.h:0);
-      const iy=end+mediaGap;image(images[0],edge,iy,936,Math.max(120,Math.min(624,bottom-iy)));
+      const iy=end+mediaGap;image(images[0],edge,iy,936,Math.max(120,Math.min(702,bottom-iy)));
     }else if(id==='band-columns' || id==='mosaic'){
       // Stable frames; text gets its own measured region below the image group.
       if(id==='mosaic')images.forEach((m,i)=>image(m,...MOSAIC_IMAGE_FRAMES[i]));
-      else image(images[0],edge,edge,936,560);
+      else image(images[0],edge,edge,936,702);
       const iy=images.length?Math.max(...images.map(m=>m.y+m.h))+mediaGap:edge;
       text(title,edge,iy,936);
       const sy=title.y+title.h+gap;
@@ -3514,20 +3555,53 @@ class XHSCardStudioView extends ItemView {
         fitTitle(936,Math.max(80,bottom-iy-gap-Math.max(sub.h,desc.h)));
         text(title,edge,iy,936);text(sub,edge,title.y+title.h+gap,456);text(desc,552,title.y+title.h+gap,456);
       }
-    }else if(column){
-      const tx=id==='aside-image'?edge:552,ix=id==='aside-image'?552:edge;
-      fitTitle(456,760);
-      const total=roles.filter(visible).reduce((n,m)=>n+m.h,0)+Math.max(0,roles.filter(visible).length-1)*gap;
-      const ih=Math.max(608,Math.min(1056,total)),iy=Math.max(edge,(1440-ih)/2);
-      image(images[0],ix,iy,456,ih);
-      stack(roles,tx,iy+Math.max(0,(ih-total)/2),456);
+      if(id==='band-columns'){
+        const bodyY=title.y+title.h+gap,room=bottom-bodyY;
+        for(const m of [sub,desc]){
+          if(!m.coverTextStyle?.fontSize && !m.manualFontSize && m.h>room){
+            for(const size of [36,32,28,24]){
+              m.fontSize=size;text(m,m===sub?edge:552,bodyY,456);
+              if(m.h<=room)break;
+            }
+          }
+          text(m,m===sub?edge:552,bodyY,456);
+        }
+      }
+    }else if(id==='aside-image'){
+      // Restore the asymmetric template: portrait at upper right, supporting
+      // copy at lower left and a wide headline below the image.
+      const preset=COMPOSITION_PRESETS.find(p=>p.id===id);
+      image(images[0],...preset.images[0]);
+      const bodyWidth=360;
+      text(sub,edge,edge,bodyWidth);text(desc,edge,edge,bodyWidth);
+      const actualHeight=(visible(sub)?sub.h:0)+(visible(desc)?desc.h:0)+(visible(sub)&&visible(desc)?gap:0);
+      const start=Math.max(edge,800-actualHeight);
+      const end=stack([sub,desc],edge,start,bodyWidth);
+      const ty=Math.max(848,visible(sub)||visible(desc)?end+mediaGap:848);
+      fitTitle(936,Math.max(80,bottom-ty));text(title,edge,ty,936);
+    }else if(id==='left-image-title'){
+      // Keep the large lower-left portrait and the upper/right text areas.
+      const preset=COMPOSITION_PRESETS.find(p=>p.id===id);
+      image(images[0],...preset.images[0]);
+      fitTitle(828,260);text(title,180,100,828);
+      text(sub,648,620,360);
+      text(desc,648,sub.y+sub.h+gap,360);
+      if(desc.y+desc.h>bottom && !desc.coverTextStyle?.fontSize){
+        desc.fontSize=32;text(desc,648,sub.y+sub.h+gap,360);
+      }
     }else if(id==='center-banner'){
-      image(images[0],0,0,1080,1440,true);
-      const total=roles.filter(visible).reduce((n,m)=>n+m.h,0)+Math.max(0,roles.filter(visible).length-1)*gap;
-      stack(roles,edge,Math.max(edge,720-total/2),936);
-      panel(modules.find(m=>m.id==='composition-block'),roles);
+      // A square image with a central title band and a separate bottom caption.
+      const preset=COMPOSITION_PRESETS.find(p=>p.id===id);
+      image(images[0],...preset.images[0],true);
+      fitTitle(936,440);
+      const total=[title,sub].filter(visible).reduce((n,m)=>n+m.h,0)+(visible(title)&&visible(sub)?gap:0);
+      stack([title,sub],edge,Math.max(edge,640-total/2),936);
+      text(desc,edge,Math.max(1192,bottom-desc.h),936);
+      panel(modules.find(m=>m.id==='composition-block'),[title,sub]);
     }else if(id==='solid-poster'){
+      // Full-bleed 3:4 image, upper title band and separate bottom caption.
       image(images[0],0,0,1080,1440,true);
+      fitTitle(936,480);
       stack([title,sub],edge,192,936);
       text(desc,edge,bottom-desc.h,936);
       panel(modules.find(m=>m.id==='composition-block'),[title,sub]);
@@ -3606,7 +3680,7 @@ class XHSCardStudioView extends ItemView {
         borderRadius:0,borderWidth:0,background:"transparent",maxLines,
         color:role==="title"?config.cover_title_color || color:(style.color || color)});
       this.constrainCoverTextModuleToSafeArea(module);
-      const measured=this.measureCoverTextFrame(module);
+      const measured=this.measureCoverTextFrame(module,undefined,config);
       module.h=measured.height;
       this.applyCoverDescriptionAlignment(module);
       this.constrainCoverTextModuleToSafeArea(module);
@@ -3637,7 +3711,7 @@ class XHSCardStudioView extends ItemView {
     if(id==="solid-poster") {
       const style={fontSize:g.descriptionSize,lineHeight:g.descriptionLeading/g.descriptionSize,fontWeight:400,letterSpacing:0,
         ...this.normalizeCoverTextStyle(description.coverTextStyle)};
-      const measured=this.measureCoverTextFrame({...description,...style,coverTextRole:"description",w:description.manualSize?description.w:w},config.composition_description);
+      const measured=this.measureCoverTextFrame({...description,...style,coverTextRole:"description",w:description.manualSize?description.w:w},config.composition_description,config);
       dy=Math.floor((g.height-g.margin-measured.height)/8)*8;
     }
     make(description,"description",config.composition_description,dx,dy,dw,g.descriptionSize,g.descriptionLeading,400,id==="left-image-title"?6:3);
@@ -3737,6 +3811,7 @@ class XHSCardStudioView extends ItemView {
       const m=modules.find(m=>m.id===id);
       Object.assign(m,{x:0,y:i*720,w:1080,h:720,aspectRatio:1.5,locked:true,rotation:0,borderWidth:0,borderRadius:0});
       if(!['contain','cover'].includes(m.objectFit))m.objectFit='contain';
+      m.aspectRatio=m.w/m.h;
     }
     const roles=['title','subtitle','description'].map(role=>modules.find(m=>m.coverTextRole===role));
     for(const m of roles) {
@@ -3749,7 +3824,7 @@ class XHSCardStudioView extends ItemView {
       if(!m.manualSize)m.w=936;
       if(!m.manualPosition)m.x=72;
       this.constrainCoverTextModuleToSafeArea(m);
-      const measured=this.measureCoverTextFrame(m);
+      const measured=this.measureCoverTextFrame(m,undefined,config);
       m.h=m.text?measured.height:0;
       m.maxLines=Math.max(m.coverTextRole==='title'?3:2,measured.lines);
     }
@@ -3789,7 +3864,7 @@ class XHSCardStudioView extends ItemView {
         background:'transparent',borderRadius:0,borderWidth:0,rotation:0});
       if(!m.manualSize)m.w=936;
       if(!manual)m.x=72;
-      const measured=this.measureCoverTextFrame(m);m.h=m.text?measured.height:0;m.maxLines=Math.max(role==='title'?3:2,measured.lines);
+      const measured=this.measureCoverTextFrame(m,undefined,config);m.h=m.text?measured.height:0;m.maxLines=Math.max(role==='title'?3:2,measured.lines);
     }
     for(const image of media) {
       if(!image.manualSize)Object.assign(image,{w:1080,h:810});
@@ -3818,7 +3893,7 @@ class XHSCardStudioView extends ItemView {
     let nextY=visible[0]?.y || 104;
     for(const m of visible) {
       m.x=x+72;m.w=width-144;
-      const measured=this.measureCoverTextFrame(m);
+      const measured=this.measureCoverTextFrame(m,undefined,config);
       m.h=measured.height;m.maxLines=Math.max(m.maxLines || 0,measured.lines);
       m.y=Math.max(nextY,m.y);nextY=m.y+m.h+32;
     }
@@ -3963,7 +4038,7 @@ class XHSCardStudioView extends ItemView {
       Object.assign(module,{text:value || "",coverTextRole:role,magazineReference:true,
         x:module.manualPosition?module.x:x,y:module.manualPosition?module.y:y,w:module.manualSize?module.w:w,
         ...style,color:style.color || color,background:"transparent",borderRadius:0,borderWidth:0,maxLines});
-      module.h=this.measureCoverTextFrame(module).height;
+      module.h=this.measureCoverTextFrame(module,undefined,config).height;
       this.applyCoverDescriptionAlignment(module);
       this.constrainCoverTextModuleToSafeArea(module);
     };
@@ -3972,10 +4047,10 @@ class XHSCardStudioView extends ItemView {
     subtitle.coverTextRole = "subtitle";
     subtitle.manualSize = false;
     const inset = this.getCoverTextFramePadding(subtitle);
-    const width = this.measureCoverTextWidth(config.subtitle, subStyle.fontSize, subStyle.fontWeight, subStyle.letterSpacing);
+    const width = this.measureCoverTextWidth(config.subtitle, subStyle.fontSize, subStyle.fontWeight, subStyle.letterSpacing,config);
     const subWidth = Math.min(936, Math.ceil(width) + inset * 2);
     text(subtitle,"subtitle",config.subtitle,72,title.y+title.h+72,subWidth,40,54,600,2,"#00110f");
-    subtitle.maxLines=Math.max(2,this.measureCoverTextFrame(subtitle).lines);
+    subtitle.maxLines=Math.max(2,this.measureCoverTextFrame(subtitle,undefined,config).lines);
     text(description,"description",config.composition_description,72,1088,936,36,54,400,3,config.text_color);
     const shape=(id,patch)=>{
       let module=modules.find(m=>m.id===id);
@@ -4059,7 +4134,7 @@ class XHSCardStudioView extends ItemView {
     this.applyDefaultCoverAppearance();
     this.config.xhs_modules=this.createDefaultModulesForStyle(this.config.xhs_style,this.config);
     this.ensureUnifiedCoverVisuals();this.syncUnifiedCoverContent();
-    for(const m of this.config.xhs_modules.filter(m=>m.type==='image')){m.src='';m.objectFit='contain';}
+    for(const m of this.config.xhs_modules.filter(m=>m.type==='image'))m.src='';
     this.selectedModuleId="";
     this.persistDraft();void this.render();
   }
@@ -4172,6 +4247,10 @@ class XHSCardStudioView extends ItemView {
       });
       this.renderTransparentCoverTitle(card);
     });
+  }
+
+  getContentFontFamily() {
+    return CONTENT_FONT_STACK;
   }
 
   renderUnifiedCoverControls() {
@@ -4307,9 +4386,9 @@ class XHSCardStudioView extends ItemView {
     };
 
     const colors = this.createCoverColorGroup("自定义颜色");
-    this.addUnifiedCoverColor("主标题纯色", "cover_title_color", "", syncPreset, colors);
+    this.addUnifiedCoverColor("主标题", "cover_title_color", "", syncPreset, colors);
     this.addUnifiedCoverColor("副标题", "", "subtitle", undefined, colors);
-    this.addUnifiedCoverColor("说明文案", "", "description", undefined, colors);
+    this.addUnifiedCoverColor("辅助文案", "", "description", undefined, colors);
     this.addUnifiedCoverColor("高亮字", "cover_highlight_color", "", undefined, colors);
     if (gradients.length) {
       const pair = this.createCoverColorGroup("主标题渐变色");
@@ -4349,7 +4428,7 @@ class XHSCardStudioView extends ItemView {
     error.hidden=true;
     input.setAttribute('aria-describedby',error.id);
     const setError=message=>{error.textContent=message;error.hidden=!message;field.classList.toggle('is-invalid',Boolean(message));};
-    const initial=this.parseCoverHexColor(current() || (key==="cover_highlight_color" ? this.config.accent_color : "")) || '#ffffff';
+    const initial=this.parseCoverHexColor(current() || (key==="cover_highlight_color" ? "#007aff" : "")) || '#ffffff';
     swatch.value=initial;input.value=initial.toUpperCase();
 
     if (purpose) {
@@ -4415,6 +4494,7 @@ class XHSCardStudioView extends ItemView {
     const button=parent.createEl("button",{cls:`xhs-unified-choice xhs-cover-color-choice${active?" is-active":""}`,
       attr:{type:"button","aria-pressed":String(active),"aria-label":name,title:name}});
     const swatch=button.createSpan({cls:"xhs-cover-color-swatch",attr:{"aria-hidden":"true"}});
+    if(colors.length>1)swatch.dataset.gradientSwatch='true';
     swatch.style.background=colors.length>1 ? this.getGradientCssFromStops(colors) : colors[0];
 
     return button;
@@ -5000,8 +5080,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   applyDetailTitleHighlightDefaults() {
-    this.config.detail_title_color_mode="solid";
-    this.config.detail_title_highlight_color=this.parseCoverHexColor(this.config.detail_title_highlight_color) || VISUAL_RULES.accent;
+    removeLegacyDetailConfig(this.config);
   }
 
   uniqueColorPresets(presets) {
@@ -5343,7 +5422,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   getDetailTitleGradientStops() {
-    return [VISUAL_RULES.accent,VISUAL_RULES.accent];
+    return [DETAIL_DESIGN.colors.accent,DETAIL_DESIGN.colors.accent];
   }
 
   getDetailTitleGradientCss() {
@@ -5424,7 +5503,7 @@ class XHSCardStudioView extends ItemView {
       group.items.forEach(([label, preset]) => {
         const button = grid.createEl("button", {
           cls: `xhs-module-preset xhs-preset-${preset}`,
-          attr: { type: "button", "aria-label": label }
+          attr: { type: "button", "aria-label": label, "data-module-preset": preset }
         });
         const module = this.createCustomModulePreset(preset);
         this.ensureCenteredLabelModuleSize(module);
@@ -5444,6 +5523,16 @@ class XHSCardStudioView extends ItemView {
         });
       });
     });
+    this.syncModulePresetSelection();
+  }
+
+  syncModulePresetSelection() {
+    const selected = this.getSelectedModule();
+    for (const button of this.controlsEl?.querySelectorAll('[data-module-preset]') || []) {
+      const active = Boolean(selected?.custom && selected.id?.startsWith(button.dataset.modulePreset + '-'));
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', String(active));
+    }
   }
 
   addCustomModule(preset) {
@@ -5481,8 +5570,8 @@ class XHSCardStudioView extends ItemView {
     };
 
     const presets = {
-      image: { ...common, name: "图片 Logo", type: "image", role: "", x: 570, y: 690, w: 360, h: 240, objectFit: "contain", borderRadius: DEFAULT_IMAGE_RADIUS, className: "xhs-module-custom-image" },
-      "image-main": { ...common, name: "图片 Logo", type: "image", role: "", x: 570, y: 690, w: 360, h: 240, objectFit: "contain", borderRadius: DEFAULT_IMAGE_RADIUS, className: "xhs-module-custom-image" },
+      image: { ...common, name: "图片 Logo", type: "image", role: "", x: 72, y: 72, w: 936, h: 1248, objectFit: "contain", borderRadius: DEFAULT_IMAGE_RADIUS, className: "xhs-module-custom-image" },
+      "image-main": { ...common, name: "图片 Logo", type: "image", role: "", x: 72, y: 72, w: 936, h: 1248, objectFit: "contain", borderRadius: DEFAULT_IMAGE_RADIUS, className: "xhs-module-custom-image" },
       "image-logo": { ...common, name: "Logo", type: "image", role: "logo", x: 820, y: 92, w: 120, h: 120, objectFit: "contain", className: "xhs-module-custom-image" },
       "image-icon2": { ...common, name: "图标", type: "image", role: "icon2", x: 820, y: 235, w: 120, h: 120, objectFit: "contain", className: "xhs-module-custom-image" },
       "label-solid": { ...common, ...textCommon, name: "青色标签", background: "var(--xhs-accent)", className: "xhs-module-label-badge" },
@@ -6168,7 +6257,7 @@ class XHSCardStudioView extends ItemView {
 
   getStyleDetailDefaults(style, config = this.config) {
     return {background:VISUAL_RULES.background,text:VISUAL_RULES.ink,
-      fontWeight:VISUAL_RULES.bodyWeight,lineHeight:VISUAL_RULES.bodyLeading};
+      fontWeight:400,lineHeight:DETAIL_DESIGN.typography.bodyLeading};
   }
 
   migrateAppleSilverPalette(config) {
@@ -6742,7 +6831,6 @@ class XHSCardStudioView extends ItemView {
       if (key === "huawei_gradient_from" || key === "huawei_gradient_to") this.config.huawei_gradient_preset = "";
       if (key === "instagram_gradient_from" || key === "instagram_gradient_to") this.config.instagram_gradient_preset = "";
       if (key === "google_gradient_from" || key === "google_gradient_to") this.config.google_gradient_preset = "";
-      if (key === "detail_title_gradient_from" || key === "detail_title_gradient_to") this.config.detail_title_color_mode = "gradient";
       this.syncNeonModulesFromConfig(key);
       this.persistDraft();
       if (this.config.xhs_style === "composition") this.renderControls();
@@ -6969,6 +7057,7 @@ class XHSCardStudioView extends ItemView {
     const card = wrapper.createDiv({
       cls: `xhs-card xhs-template-${this.config.xhs_style} xhs-page-${page.kind}${page.scrollable ? " is-scrollable-detail" : ""}`
     });
+    card.style.setProperty("--xhs-card-font",this.getContentFontFamily(page.kind));
     card.style.width = `${this.config.xhs_width}px`;
     card.style.height = `${this.config.xhs_height}px`;
     card.style.setProperty("--xhs-accent", this.config.accent_color);
@@ -6996,7 +7085,7 @@ class XHSCardStudioView extends ItemView {
     card.style.setProperty("--xhs-body-size", `${this.config.body_size}px`);
     card.style.setProperty("--xhs-detail-bg", this.config.detail_background_color);
     card.style.setProperty("--xhs-detail-text", this.getDetailTextColor());
-    card.style.setProperty("--xhs-detail-title-highlight", this.config.detail_title_highlight_color);
+    card.style.setProperty("--xhs-detail-title-highlight", DETAIL_DESIGN.colors.accent);
     card.style.setProperty("--xhs-detail-title-gradient-css", this.getDetailTitleGradientCss());
     card.style.setProperty("--xhs-detail-font-size", `${this.config.detail_font_size}px`);
     card.style.setProperty("--xhs-detail-font-weight", String(this.config.detail_font_weight));
@@ -7213,6 +7302,8 @@ class XHSCardStudioView extends ItemView {
           this.updateSelectedModule({[key]:Math.round(Math.max(min,Math.min(max,value)))});
         });
       });
+      this.makeCanvasToolButton(lineTools,"−",()=>this.adjustSelectedNumber('h',-1,1,200)).setAttribute('aria-label','减小线条粗细');
+      this.makeCanvasToolButton(lineTools,"+",()=>this.adjustSelectedNumber('h',1,1,200)).setAttribute('aria-label','增加线条粗细');
       this.makeCanvasToolButton(lineTools,"1px",()=>this.updateSelectedModule({h:1}));
     }
     if (selected.type === "image") {
@@ -7237,7 +7328,7 @@ class XHSCardStudioView extends ItemView {
 
   renderDetailControls() {
     const sections = [
-      ["detail_page_type", "详情页样式", [["modular", "模块化详情页"], ["document", "纯色文档型"]]],
+      ["detail_page_type", "排版样式", [["modular", "卡片布局"], ["document", "文档布局"]]],
       ["detail_font_size", "字号", this.getDetailStylePresets()[0][2].map(size => [size, String(size)])]
     ];
     for (const [key, label, options] of sections) {
@@ -7260,7 +7351,6 @@ class XHSCardStudioView extends ItemView {
       this.updateDetailStyle({
         detail_background_color: DEFAULT_CONFIG.detail_background_color,
         detail_text_color: DEFAULT_CONFIG.detail_text_color,
-        detail_title_highlight_color: DEFAULT_CONFIG.detail_title_highlight_color,
         detail_text_color_custom: false
       });
       this.renderControls();
@@ -7268,32 +7358,6 @@ class XHSCardStudioView extends ItemView {
     resetColors.classList.add("xhs-cover-reset-button");
     resetColors.title="恢复详情页默认颜色，不影响封面与图片位置";
     resetColors.setAttribute("aria-description", resetColors.title);
-  }
-
-  renderDetailAccentControl(parent) {
-    const row=parent.createDiv({cls:'xhs-cover-custom-color-row'});
-    const picker=row.createEl('input',{cls:'xhs-cover-custom-swatch',attr:{type:'color','aria-label':'详情页强调色颜色预览'}});
-    const input=row.createEl('input',{cls:'xhs-studio-input xhs-cover-custom-hex',attr:{type:'text','aria-label':'详情页强调色色值',placeholder:'#RRGGBB'}});
-    const initial=this.parseCoverHexColor(this.config.detail_title_highlight_color) || VISUAL_RULES.accent;
-    picker.value=initial;input.value=initial.toUpperCase();
-    const apply=value=>{
-      this.config.detail_title_highlight_color=value;
-      this.persistDraft();
-      if(this.previewCanvasEl?.classList.contains('xhs-page-detail')) {
-        this.applyDetailPresentation(this.previewCanvasEl);
-        this.previewCanvasEl.style.setProperty('--xhs-detail-title-highlight',value);
-      }
-    };
-    const validate=()=>{
-      const value=this.parseCoverHexColor(input.value);
-      input.setCustomValidity(value?'':'请输入三位或六位 HEX 色值');
-      input.setAttribute('aria-invalid',String(!value));
-      if(value){picker.value=value;apply(value);}return value;
-    };
-    picker.addEventListener('input',()=>{input.value=picker.value.toUpperCase();input.setCustomValidity('');input.setAttribute('aria-invalid','false');apply(picker.value);});
-    input.addEventListener('input',validate);
-    input.addEventListener('blur',()=>{const value=validate();if(value)input.value=value.toUpperCase();});
-    input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();const value=validate();if(value)input.value=value.toUpperCase();else input.reportValidity();}});
   }
 
   getDetailStylePresets(config = this.config) {
@@ -7331,7 +7395,7 @@ class XHSCardStudioView extends ItemView {
     this.applyDetailPresentation(card);
     card.style.setProperty("--xhs-detail-bg", this.config.detail_background_color);
     card.style.setProperty("--xhs-detail-text", this.getDetailTextColor());
-    card.style.setProperty("--xhs-detail-title-highlight", this.config.detail_title_highlight_color);
+    card.style.setProperty("--xhs-detail-title-highlight", DETAIL_DESIGN.colors.accent);
     card.style.setProperty("--xhs-detail-title-gradient-css", this.getDetailTitleGradientCss());
     card.style.setProperty("--xhs-detail-font-size", `${this.config.detail_font_size}px`);
     card.style.setProperty("--xhs-detail-font-weight", String(this.config.detail_font_weight));
@@ -7405,7 +7469,7 @@ class XHSCardStudioView extends ItemView {
       if(button.disabled)return;
       button.disabled=true;button.setAttribute('aria-busy','true');
       try { await onClick(); }
-      catch(error){console.error('[XHS Cards]',error);new Notice(`操作失败：${error.message || error}`);}
+      catch(error){console.error('[XHS Aura Design]',error);new Notice(`操作失败：${error.message || error}`);}
       finally {button.disabled=false;button.removeAttribute('aria-busy');}
     });
     return button;
@@ -7503,7 +7567,7 @@ class XHSCardStudioView extends ItemView {
     Object.assign(selected, patch);
     if(selected.id === "cover-structure-rule") {
       selected.w=Math.max(1,Math.min(selected.w,this.config.xhs_width-144));
-      if(patch.h != null)this.config.cover_rule_thickness=this.toNumber(patch.h,2,1,200);
+      if(patch.h != null)this.config.cover_rule_thickness=this.toNumber(patch.h,1,1,200);
       selected.h=this.config.cover_rule_thickness || this.getContentDivider().width;
       selected.background=this.config.secondary_color;selected.opacity=1;selected.rotation=0;
       selected.x=Math.max(72,Math.min(selected.x,this.config.xhs_width-72-selected.w));
@@ -7615,6 +7679,7 @@ class XHSCardStudioView extends ItemView {
     card.querySelectorAll(".xhs-edit-module").forEach((element) => {
       element.classList.toggle("is-selected", element.getAttribute("data-module-id") === this.selectedModuleId);
     });
+    this.syncModulePresetSelection();
     this.previewShellEl.querySelectorAll(".xhs-canvas-toolbar").forEach((toolbar) => toolbar.remove());
     this.renderCanvasModuleToolbar(this.pages[this.activePageIndex] || { kind: "cover" });
     return true;
@@ -7881,6 +7946,7 @@ class XHSCardStudioView extends ItemView {
       attr: { "data-module-id": module.id }
     });
     this.applyModuleStyle(element, module);
+    if(this.isLineModule(module))element.classList.add('xhs-line-edit-target');
     const customLayer = this.getCustomCoverLayer(module);
     if (customLayer) element.style.zIndex = String(customLayer);
 
@@ -8188,9 +8254,7 @@ class XHSCardStudioView extends ItemView {
           const artStyle = this.getTitleArtStyleForScript(run.script);
           if (artStyle) classes.push("xhs-title-art-text");
           const span = line.createSpan({ cls: classes.join(" "), text: run.text });
-          if (segment.highlight && (this.config.cover_highlight_color || (!this.isTitleGradientEnabled() && this.config.cover_editor_version===1))) {
-            span.style.color=this.config.cover_highlight_color || this.config.cover_title_color || module.color;
-          }
+          if (segment.highlight) span.style.color=this.config.cover_highlight_color || '#007aff';
           if (segment.highlight) this.applyCoverTextOutlineStyle(span, "highlight", this.config.accent_color);
           if (artStyle) {
             span.style.setProperty("--xhs-cover-run-font", artStyle.fontFamily);
@@ -8204,7 +8268,7 @@ class XHSCardStudioView extends ItemView {
 
   shouldUseTitleGradient(segment) {
     return this.isTitleGradientEnabled()
-      && (!segment.highlight || !this.config.cover_highlight_color);
+      && !segment.highlight;
   }
 
   applyCoverTextOutlineStyle(element, kind, textColor) {
@@ -8299,7 +8363,7 @@ class XHSCardStudioView extends ItemView {
       }
       if (persist) this.persistDraft();
     } catch (error) {
-      console.error("[XHS Cards] 图片比例读取失败", error);
+      console.error("[XHS Aura Design] 图片比例读取失败", error);
     }
   }
 
@@ -8815,9 +8879,10 @@ class XHSCardStudioView extends ItemView {
   }
 
   normalizeDetailHighlights(host) {
-    const palette={red:'#e93147',orange:'#ec7500',yellow:'#e0ac00',green:'#08b94e',blue:'#086ddd',purple:'#7852ee'};
+    const palette={red:'#e93147',orange:'#ec7500',yellow:'#e0ac00',green:'#08b94e',blue:DETAIL_DESIGN.colors.accent,purple:'#7852ee'};
     const symbols={'🔴':'red','🟠':'orange','🟡':'yellow','🟢':'green','🔵':'blue','🟣':'purple'};
     for(const mark of host.querySelectorAll('mark')) {
+      if(mark.closest('pre,code'))continue;
       let name=mark.dataset.color || mark.dataset.highlightColor || mark.dataset.highlight || mark.dataset.xhsHighlightColor;
       const prefix=mark.textContent.match(/^(🔴|🟠|🟡|🟢|🔵|🟣)\ufe0f?/u);
       if(prefix) {
@@ -8837,7 +8902,13 @@ class XHSCardStudioView extends ItemView {
         : name && color ? fallback : `var(--highlight-background, ${fallback})`);
       mark.style.setProperty('--xhs-mark-background', background);
       mark.style.setProperty('--xhs-mark-foreground', foreground || 'inherit');
-      mark.dataset.xhsHighlightStyle = 'background';
+      const mode=mark.dataset.highlightStyle || mark.dataset.xhsHighlightStyle;
+      const textOnly=mode==='text' || (mode!=='background' && !name && !explicitBackground);
+      mark.dataset.xhsHighlightStyle = textOnly ? 'text' : 'background';
+      if(textOnly){
+        mark.style.setProperty('--xhs-mark-foreground',foreground || color || DETAIL_DESIGN.colors.textHighlight);
+        mark.style.setProperty('--xhs-mark-background','transparent');
+      }
       if(name)mark.dataset.xhsHighlightColor=name;
       // Keep the bold wrapper as the structural title when styling its highlight.
       const children=Array.from(mark.childNodes).filter(node=>node.nodeType!==3 || node.textContent.trim());
@@ -9055,7 +9126,32 @@ class XHSCardStudioView extends ItemView {
     this.markDetailStyleStructure(host, card);
     if(this.config.detail_page_type==="modular" && !page.readingHtml)this.fitStandaloneDetailMedia(host,card);
     this.refreshDetailImageAnchors(card);
+    this.alignDetailBulletCenters(host,card);
     content._xhsReadingAudit = this.auditDetailReadingFlow(content);
+  }
+
+  alignDetailBulletCenters(host,card) {
+    const scale=this.getCardScale(card) || 1;
+    for(const anchor of host.querySelectorAll('li,.xhs-reference-item-title')){
+      const dot=anchor.querySelector(':scope > .xhs-module-bullet');
+      const marker=getComputedStyle(dot || anchor,dot?null:'::before');
+      if(marker.display==='none' || (!dot && !['""',"''"].includes(marker.content)))continue;
+      const width=parseFloat(marker.width),height=parseFloat(marker.height);
+      if(!(width>0 && width<=12 && Math.abs(width-height)<1))continue;
+      const walker=document.createTreeWalker(anchor,NodeFilter.SHOW_TEXT);
+      let text,rect;
+      while((text=walker.nextNode())){
+        if(!text.textContent.trim() || text.parentElement.closest('.xhs-module-bullet,.xhs-module-ordinal,.xhs-reference-ordinal'))continue;
+        if(anchor.tagName==='LI' && text.parentElement.closest('li')!==anchor)continue;
+        const range=document.createRange();range.selectNodeContents(text);
+        rect=Array.from(range.getClientRects()).find(r=>r.width>0 && r.height>0);
+        if(rect)break;
+      }
+      if(!rect)continue;
+      const top=((rect.top+rect.bottom)/2-anchor.getBoundingClientRect().top)/scale-height/2;
+      if(dot)dot.style.setProperty('top',`${top}px`,'important');
+      else {anchor.dataset.xhsBulletAligned='true';anchor.style.setProperty('--xhs-bullet-top',`${top}px`);}
+    }
   }
 
   getDetailModuleRegistry() {
@@ -9970,7 +10066,12 @@ class XHSCardStudioView extends ItemView {
           row.querySelectorAll(':scope > td.is-compact-field').forEach(cell=>cell.classList.remove('is-compact-field'));
         }
         const labels=Array.from(row.querySelectorAll(':scope > td.is-compact-field > .xhs-table-field-label'));
-        if(labels.length)row.style.setProperty('--detail-record-label-width',`${Math.max(...labels.map(label=>label.getBoundingClientRect().width/scale))}px`);
+        row.classList.toggle('has-inline-fields',labels.length>0);
+        if(labels.length){
+          const titleLabel=row.querySelector(':scope > td[data-reading-field-role="title"] > .xhs-table-field-label');
+          if(titleLabel)labels.push(titleLabel);
+          row.style.setProperty('--detail-record-label-width',`${Math.max(...labels.map(label=>label.getBoundingClientRect().width/scale))}px`);
+        }else row.style.removeProperty('--detail-record-label-width');
       }
       if(this.applyDetailCardColumns(rows,table.dataset.detailColumns,card))continue;
       const decisions=rows.map(row=>row.getBoundingClientRect().height/scale>capacity*rules.parallelHeightRatio ||
@@ -10061,7 +10162,7 @@ class XHSCardStudioView extends ItemView {
         const exceedsText=(node,lines)=>{
           if(!node || !node.textContent.trim())return false;
           const range=document.createRange();range.selectNodeContents(node);
-          const leading=parseFloat(getComputedStyle(node.querySelector('p,li') || node).lineHeight) || system.body*VISUAL_RULES.bodyLeading;
+          const leading=parseFloat(getComputedStyle(node.querySelector('p,li') || node).lineHeight) || system.body*DETAIL_DESIGN.typography.bodyLeading;
           return node.scrollWidth>node.clientWidth+1 || range.getBoundingClientRect().height/scale>leading*lines+1;
         };
         const stacked=items.map(item=>{
@@ -10242,7 +10343,7 @@ class XHSCardStudioView extends ItemView {
         || Array.from(row.cells).some(cell => cell.colSpan !== 1 || cell.rowSpan !== 1))) continue;
       // Keep author-provided column geometry; recalculate only plugin-owned spans.
       if (table.querySelector("colgroup:not([data-reading-columns])")) continue;
-      const basis=`${this.getDetailDesignSystem().content}:${this.getDetailDesignSystem().body}`;
+      const basis=`table-spacing-2:${this.getDetailDesignSystem().content}:${this.getDetailDesignSystem().body}`;
       if(table.dataset.readingColumnBasis===basis && table.querySelector('colgroup[data-reading-columns]'))continue;
       const lengths = Array.from({length:count}, (_, index) => rows.map(row => {
         const text = row.cells[index].textContent.trim();
@@ -10264,12 +10365,23 @@ class XHSCardStudioView extends ItemView {
       if (count === 2 && scores[0] <= 16 && scores[1] > scores[0] * 1.8) {
         shares[0] = weights[0]; shares[1] = weights[1];
       }
-      const width=table.getBoundingClientRect().width || this.getDetailDesignSystem().content;
+      const tableStyle=getComputedStyle(table);
+      const width=(table.getBoundingClientRect().width || this.getDetailDesignSystem().content)-(parseFloat(tableStyle.paddingLeft)||0)-(parseFloat(tableStyle.paddingRight)||0);
       const style=getComputedStyle(rows[0].cells[0]),font=parseFloat(style.fontSize) || this.getDetailDesignSystem().body;
       const labelMinimum=font*4+(parseFloat(style.paddingLeft)||0)+(parseFloat(style.paddingRight)||0)
         +(parseFloat(style.borderLeftWidth)||0)+(parseFloat(style.borderRightWidth)||0)+this.getDetailDesignSystem().unit;
       if(count===2 && scores[0]<=16 && labelMinimum<width*.5 && shares[0]*width<labelMinimum) {
         shares[0]=labelMinimum/width;shares[1]=1-shares[0];
+      }
+      if(count===2 && rows.every(row=>Array.from(row.cells[0].textContent.trim()).length<=8)) {
+        const context=document.createElement('canvas').getContext('2d');
+        const widest=Math.max(...rows.map(row=>{
+          const cell=row.cells[0],cs=getComputedStyle(cell);
+          if(context)context.font=`${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+          return (context?context.measureText(cell.textContent.trim()).width:cell.textContent.trim().length*font)
+            +(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0);
+        }));
+        shares[0]=Math.min(.4,Math.max(.16,(widest+2)/width));shares[1]=1-shares[0];
       }
       for(const row of rows) {
         const label=row.cells[0],short=count===2 && Array.from(label.textContent.trim()).length<=4;
@@ -10950,14 +11062,13 @@ class XHSCardStudioView extends ItemView {
   }
 
   getDetailBlockGap(previous, token) {
-    if (!previous) return 0;
-    if (token.type === "paragraph" && /^(?:\*\*[^\n]+\*\*|__[^\n]+__)\s*$/.test(token.text || "")) return 0.8;
-    if (token.type === "heading") return token.level <= 2 ? 1 : 0.65;
-    if (previous.type === "heading") return previous.level <= 2 ? 0.4 : 0.25;
-    if (token.type === "list" && previous.type === "paragraph") return 0.2;
-    if (token.type === "rule" || previous.type === "rule") return 0.65;
-    if (token.type === "image" && previous.type === "image") return this.getDetailImageGap() / (this.config.detail_font_size || 30);
-    return 0.4;
+    const space=DETAIL_DESIGN.space,scale=this.getDetailDesignSystem().unit/DETAIL_DESIGN.canvas.unit;
+    if(!previous)return 0;
+    const pixels=token.type==='heading'?space.sectionBefore
+      :previous.type==='heading'?(previous.level<=2?space.sectionContent:space.titleBody)
+      :token.type==='image'&&previous.type==='image'?space.group:space.paragraph;
+    // Legacy spacer tokens are expressed in body-size units; their result is fixed pixels.
+    return pixels*scale/this.getDetailDesignSystem().body;
   }
 
   applyDetailPresentation(card) {
@@ -10966,10 +11077,12 @@ class XHSCardStudioView extends ItemView {
     card.style.setProperty('--detail-divider',system.divider.border);
     card.style.setProperty('--detail-divider-width',`${system.divider.width}px`);
     card.style.setProperty('--detail-divider-color',system.divider.color);
+    card.style.setProperty('--detail-heading-divider-color',system.divider.color==='#555961'?'#737780':'#d2d2d7');
     card.dataset.detailMetrics="20261123";
     card.dataset.detailUi="coss";
+    card.style.setProperty("--xhs-card-font",this.getContentFontFamily("detail"));
     card.style.setProperty("--detail-auxiliary-size", `${DETAIL_METRICS.auxiliary * system.body / DETAIL_METRICS.body}px`);
-    card.style.setProperty("--detail-caption-gap", `${12 * system.unit / 8}px`);
+    card.style.setProperty("--detail-caption-gap", `${DETAIL_DESIGN.space.imageCaption * system.unit / 8}px`);
     card.dataset.detailPageType=this.config.detail_page_type;
     card.style.setProperty("--module-accent",system.colors.accent);
     card.style.setProperty("--module-surface",system.colors.background);
@@ -11010,6 +11123,13 @@ class XHSCardStudioView extends ItemView {
     });
     card.style.setProperty("--detail-text-width", `${system.content}px`);
     card.style.setProperty("--detail-media-gap", `${this.config.detail_image_gap}px`);
+    const detailScale=(Number(this.config.xhs_width)||DETAIL_DESIGN.canvas.width)/DETAIL_DESIGN.canvas.width;
+    for(const [group,values] of Object.entries(DETAIL_DESIGN)){
+      if(group==='typography')continue;
+      for(const [key,value] of Object.entries(values))if(typeof value==='number')
+        card.style.setProperty(`--detail-design-${group}-${key.replace(/[A-Z]/g,c=>'-'+c.toLowerCase())}`,`${value*detailScale}px`);
+    }
+    card.dataset.detailSpacingStandard='single-source-1';
     const vars = {
       "detail-bg": system.colors.background,
       "detail-text": system.colors.ink,
@@ -11026,11 +11146,11 @@ class XHSCardStudioView extends ItemView {
   }
 
   getDetailPaginationKey() {
-    const keys = ["detail_page_type", "detail_module_layout", "xhs_style", "xhs_width", "xhs_height", "detail_font_size", "detail_font_weight",
+    const keys = ["detail_page_type", "detail_module_layout", "xhs_style", "xhs_width", "xhs_height", "detail_font_family", "detail_font_size", "detail_font_weight",
       "detail_line_height", "detail_letter_spacing", "detail_image_gap", "detail_image_width", "detail_image_layouts"];
     const theme = typeof document === "undefined" ? "" : [document.body.className,
       getComputedStyle(document.body).getPropertyValue("--font-text"), getComputedStyle(document.body).getPropertyValue("--font-monospace")];
-    return JSON.stringify(["bounded-reading-76-detail-metrics", this.activeFile?.path, theme, ...keys.map((key) => this.config[key])]);
+    return JSON.stringify(["bounded-reading-79-detail-cleanup", this.activeFile?.path, theme, ...keys.map((key) => this.config[key])]);
   }
 
   async ensureDetailPagination() {
@@ -11427,7 +11547,7 @@ class XHSCardStudioView extends ItemView {
           host.replaceChildren(...current);
           const used=host.lastElementChild?host.lastElementChild.getBoundingClientRect().bottom-root.getBoundingClientRect().top:0;
           const shortParagraphChapter=!oversized && node.dataset.detailModule==='chapter' && nextBody?.children.length===1 && nextBody.firstElementChild.tagName==='P';
-          if(!shortParagraphChapter && (current.length || oversized) && capacity-used>=this.getDetailDesignSystem().body*VISUAL_RULES.bodyLeading*this.getDetailLayoutRules().paginationMinLines) {
+          if(!shortParagraphChapter && (current.length || oversized) && capacity-used>=this.getDetailDesignSystem().body*DETAIL_DESIGN.typography.bodyLeading*this.getDetailLayoutRules().paginationMinLines) {
             const parts=this.splitReadingToFit(node,piece=>{
               // Trial layout must match the chapter merge used when accepting a queued fragment.
               const body=piece.querySelector(':scope > .xhs-module-chapter-body');
@@ -12270,7 +12390,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   getContentDivider(config = this.config) {
-    const width=VISUAL_RULES.dividerWidth*(Number(config.xhs_width)||VISUAL_RULES.width)/VISUAL_RULES.width;
+    const width=DETAIL_DESIGN.divider.width*(Number(config.xhs_width)||DETAIL_DESIGN.canvas.width)/DETAIL_DESIGN.canvas.width;
     const background = this.parseCoverHexColor(config.detail_background_color) || DEFAULT_CONFIG.detail_background_color;
     const dark = this.getDetailColorContrast("#ffffff", background) > this.getDetailColorContrast("#000000", background);
     const color = dark ? "#555961" : VISUAL_RULES.dividerColor;
@@ -12292,13 +12412,13 @@ class XHSCardStudioView extends ItemView {
     const ink = customText ? requested : (readable(requested) ? requested : (dark ? "#f5f5f7" : VISUAL_RULES.ink));
     const bodyInk = customText ? requested : (dark ? "#e2e4e8" : VISUAL_RULES.bodyInk);
     const muted = dark ? "#b8bdc7" : VISUAL_RULES.muted;
-    const accent=this.parseCoverHexColor(config.detail_title_highlight_color) || VISUAL_RULES.accent;
+    const accent=DETAIL_DESIGN.colors.accent;
     const readableOn=base=>this.getDetailColorContrast(accent,base)>=4.5;
     const highlight=readableOn(background) && readableOn(surface) && readableOn(media) ? accent : ink;
     const channels=accent.slice(1).match(/../g).map(channel=>parseInt(channel,16));
     let tint=background;
     if (dark) tint=surface;
-    else if(accent===VISUAL_RULES.accent) tint='#e6ebff';
+    else if(accent===DETAIL_DESIGN.colors.accent) tint='#e6ebff';
     else for(const amount of [.12,.08,.04]) {
       const candidate='#'+channels.map(channel=>Math.round(255+(channel-255)*amount).toString(16).padStart(2,'0')).join('');
       if(this.getDetailColorContrast(highlight,candidate)>=4.5){tint=candidate;break;}
@@ -12309,22 +12429,23 @@ class XHSCardStudioView extends ItemView {
 
   getDetailDesignSystem(config = this.config) {
     const divider=this.getContentDivider(config);
-    const scale = (Number(config.xhs_width) || VISUAL_RULES.width) / VISUAL_RULES.width;
-    const body = [VISUAL_RULES.body,VISUAL_RULES.bodyLarge].find(value => Math.abs(value * scale - config.detail_font_size) < .01) || VISUAL_RULES.body;
+    const scale = (Number(config.xhs_width) || DETAIL_DESIGN.canvas.width) / DETAIL_DESIGN.canvas.width;
+    const body = DETAIL_DESIGN.bodySizes.find(value => Math.abs(value * scale - config.detail_font_size) < .01) || DETAIL_DESIGN.typography.body;
     const headingSizes=DETAIL_METRICS.headingSizes.map(value=>value*body/DETAIL_METRICS.body*scale);
     const modular=config.detail_page_type==="modular";
-    const spacing={micro:4,icon:8,item:16,card:VISUAL_RULES.cardPadding,control:24,paragraph:24,column:24,module:24,chapter:48};
+    const d=DETAIL_DESIGN;
+    const spacing={micro:4,icon:d.bullet.size,item:d.space.item,card:d.card.padding,control:d.space.group,paragraph:d.space.paragraph,column:d.space.column,module:d.card.gap,chapter:d.space.sectionBefore};
     for(const key of Object.keys(spacing))spacing[key]*=scale;
-    const radius=24*scale;
+    const radius=DETAIL_DESIGN.card.radius*scale;
     return {version:"unified-detail-1",columns:6,
-      unit:VISUAL_RULES.unit*scale,margin:VISUAL_RULES.margin*scale,gutter:VISUAL_RULES.gutter*scale,column:VISUAL_RULES.column*scale,content:VISUAL_RULES.content*scale,
+      unit:d.canvas.unit*scale,margin:d.canvas.margin*scale,gutter:d.space.column*scale,column:(d.canvas.content-(d.canvas.columns-1)*d.space.column)/d.canvas.columns*scale,content:d.canvas.content*scale,
       title:headingSizes[0],section:headingSizes[1],module:headingSizes[2],body:body*scale,caption:DETAIL_METRICS.caption*body/DETAIL_METRICS.body*scale,
       ordinal:headingSizes[2],
       colors:this.getDetailPalette(config),
       typography:{
-        textFont:CONTENT_FONT_STACK,
-        displayFont:CONTENT_FONT_STACK,
-        monoFont:CONTENT_FONT_STACK,
+        textFont:this.getContentFontFamily("detail",config),
+        displayFont:this.getContentFontFamily("detail",config),
+        monoFont:this.getContentFontFamily("detail",config),
         bodyLeading:DETAIL_METRICS.bodyLeading,captionLeading:DETAIL_METRICS.captionLeading,headingLeading:1.35,
         primaryLeading:1.25,headingWeight:600,bodyWeight:400,
         metricScale:VISUAL_RULES.metricScale,metricLeading:VISUAL_RULES.metricLeading},
@@ -12332,8 +12453,8 @@ class XHSCardStudioView extends ItemView {
       effects:{cardShadow:"none",labelEdge:divider.inset},
       spacing,
       cardTokens:{padding:spacing.card,gap:spacing.item,'title-gap':spacing.item,'field-gap':spacing.control,'paragraph-gap':spacing.paragraph,
-        'item-gap':spacing.item,'column-gap':spacing.item,radius,'marker-size':VISUAL_RULES.marker*scale,'marker-gap':16*scale,
-        'marker-inset':24*scale,'label-width':144*scale,'label-inset':16*scale,'ordinal-min':VISUAL_RULES.ordinalMin*scale,'tab-height-default':640*scale},
+        'item-gap':spacing.item,'column-gap':spacing.item,radius,'marker-size':d.bullet.size*scale,'marker-gap':d.bullet.gap*scale,
+        'marker-inset':d.bullet.indent*scale,'label-width':144*scale,'label-inset':16*scale,'ordinal-min':VISUAL_RULES.ordinalMin*scale,'tab-height-default':640*scale},
       borders:{container:divider.border,record:divider.border,title:divider.border},
       colorBudget:{target:{neutral:.6,ink:.3,accent:.1},minimumNeutral:.6,maximumAccent:.1,maximumInk:.3,excludeMedia:true},
       headingSizes};
@@ -12383,11 +12504,7 @@ class XHSCardStudioView extends ItemView {
     config.detail_page_type=config.detail_page_type==="document"?"document":"modular";
     config.detail_module_layout="auto";
     config.detail_text_color=this.parseCoverHexColor(config.detail_text_color) || DEFAULT_CONFIG.detail_text_color;
-    config.detail_title_color_mode='solid';
-    config.detail_title_highlight_color=this.parseCoverHexColor(config.detail_title_highlight_color) || VISUAL_RULES.accent;
-    delete config.detail_title_gradient_from;
-    delete config.detail_title_gradient_to;
-    delete config.detail_title_gradient_stops;
+    removeLegacyDetailConfig(config);
     config.detail_typography_version=3;
     const system = this.getDetailDesignSystem(config);
     const defaults = [system.body,VISUAL_RULES.bodyWeight,0,DETAIL_METRICS.bodyLeading,system.gutter];
@@ -12407,7 +12524,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   getDetailBlankLineHeight(lines = 1) {
-    const fontSize = this.config.detail_font_size || this.config.body_size || DEFAULT_CONFIG.detail_font_size;
+    const fontSize = this.getDetailDesignSystem().body;
     return Math.round(fontSize * Math.max(0, Number(lines) || 0));
   }
 
@@ -12917,7 +13034,7 @@ class XHSCardStudioView extends ItemView {
       "title_outline_mode", "title_outline_width", "title_outline_color",
       "subtitle_outline_mode", "subtitle_outline_width", "subtitle_outline_color",
       "highlight_outline_mode", "highlight_outline_width", "highlight_outline_color",
-      "cover_font_weight", "cover_line_height", "cover_letter_spacing",
+      "cover_font_family", "detail_font_family", "cover_font_weight", "cover_line_height", "cover_letter_spacing",
       "detail_page_type", "detail_module_layout", "detail_typography_version",
       "detail_background_color", "detail_text_color", "detail_text_color_custom", "detail_font_size", "detail_image_gap", "detail_image_layouts",
       "detail_font_weight", "detail_line_height", "detail_letter_spacing",
@@ -12929,7 +13046,7 @@ class XHSCardStudioView extends ItemView {
       "instagram_gradient_preset", "instagram_gradient_from", "instagram_gradient_to",
       "google_palette", "google_text_color_preset", "google_gradient_enabled", "google_gradient_preset", "google_gradient_from", "google_gradient_to",
       "subtitle", "cta", "brand", "tags", "xhs_modules", "xhs_modules_by_style", "cover_template_settings"
-    ];
+    ].filter(key=>!LEGACY_DETAIL_KEYS.includes(key));
     return common;
   }
 
@@ -12954,7 +13071,7 @@ class XHSCardStudioView extends ItemView {
       "title_outline_mode", "title_outline_width", "title_outline_color",
       "subtitle_outline_mode", "subtitle_outline_width", "subtitle_outline_color",
       "highlight_outline_mode", "highlight_outline_width", "highlight_outline_color",
-      "body_size", "cover_font_weight", "cover_line_height", "cover_letter_spacing",
+      "body_size", "cover_font_family", "detail_font_family", "cover_font_weight", "cover_line_height", "cover_letter_spacing",
       "detail_page_type", "detail_module_layout",
       "detail_background_color", "detail_text_color", "detail_text_color_custom", "detail_font_size",
       "detail_font_weight", "detail_line_height", "detail_letter_spacing",
@@ -13040,11 +13157,15 @@ class XHSCardStudioView extends ItemView {
       const measured=this.measureCoverTextFrame(module);
       if(measured.lines>module.maxLines){checks.lines=false;issues.push(`${role}超过${module.maxLines}行`);}
       if(module.x<72 || module.y<72 || module.x+module.w>1008 || module.y+Math.max(module.h,measured.height)>1368){checks.bounds=false;issues.push(`${role}超出安全边距`);}
-      if(!module.manualPosition && !["solid-poster","center-banner","nng-red-system"].includes(id) && (role==="title" ? module.x!==(id==="left-image-title"?552:72) : (module.x-72)%160!==0 && module.x!==120)){checks.grid=false;issues.push(`${role}偏离网格轴`);}
+      const expectedAnchor=id==='left-image-title'?(role==='title'?180:648):role==='title'?72:null;
+      if(!module.manualPosition && !["solid-poster","center-banner","nng-red-system"].includes(id)
+        && (expectedAnchor!=null ? module.x!==expectedAnchor : (module.x-72)%160!==0 && module.x!==120)){
+        checks.grid=false;issues.push(`${role}偏离模板对齐轴`);
+      }
       const style=getComputedStyle(element);
       if(style.textAlign!==module.textAlign)checks.alignment=false;
       const tracking=style.letterSpacing==="normal"?0:Number.parseFloat(style.letterSpacing);
-      if(Number(style.fontWeight)!==weight || Math.abs(Number.parseFloat(style.fontSize)-module.fontSize)>0.5 || !style.fontFamily.includes("SF Pro") || Math.abs(tracking-module.letterSpacing)>0.5)checks.typography=false;
+      if(Number(style.fontWeight)!==weight || Math.abs(Number.parseFloat(style.fontSize)-module.fontSize)>0.5 || !style.fontFamily.includes(this.getContentFontFamily("cover").split(",")[0].replaceAll('"','')) || Math.abs(tracking-module.letterSpacing)>0.5)checks.typography=false;
       const rect=element.getBoundingClientRect(),walker=document.createTreeWalker(element,NodeFilter.SHOW_TEXT);
       let text;
       while((text=walker.nextNode())) {
@@ -13071,10 +13192,10 @@ class XHSCardStudioView extends ItemView {
     // A manual edit owns the composition; exact preset spacing no longer applies.
     if(!manualLayout){
       const rules=COVER_LAYOUT_METRICS;
-      if(title && subtitle)gap(subtitle.y-title.y-title.h,rules.textGap,'标题与副标题间距');
+      if(title && subtitle && !['aside-image','left-image-title'].includes(id))gap(subtitle.y-title.y-title.h,rules.textGap,'标题与副标题间距');
       const paired=['image-caption','band-columns','mosaic'].includes(id);
       if(subtitle && description && paired)gap(description.y-subtitle.y,0,'双栏文案顶部偏差');
-      if(subtitle && description && !paired && !['headline-band','solid-poster','neon-grid'].includes(id))
+      if(subtitle && description && !paired && !['headline-band','solid-poster','neon-grid','center-banner'].includes(id))
         gap(description.y-subtitle.y-subtitle.h,rules.textGap,'副标题与辅助文案间距');
       if(media.length){
         const top=Math.min(...media.map(m=>m.y)),bottom=Math.max(...media.map(m=>m.y+m.h));
@@ -13087,10 +13208,7 @@ class XHSCardStudioView extends ItemView {
           const end=Math.max(...[title,subtitle,description].filter(Boolean).map(m=>m.y+m.h));
           gap(top-end,rules.mediaGap,'双栏文字与图片间距');
         }
-        if(['aside-image','left-image-title'].includes(id)){
-          const groupTop=Math.min(...modules.map(m=>m.y)),groupBottom=Math.max(...modules.map(m=>m.y+m.h));
-          gap((groupTop+groupBottom)/2,(top+bottom)/2,'图文组垂直中心偏差');
-        }
+
       }
     }
     return {checks,issues:[...new Set(issues)],roles};
@@ -13119,7 +13237,7 @@ class XHSCardStudioView extends ItemView {
         }
       }
       const style=getComputedStyle(element);
-      if(!style.fontFamily.includes("SF Pro"))issues.push(`${module.id}字体未统一`);
+      if(!style.fontFamily.includes(this.getContentFontFamily("cover").split(",")[0].replaceAll('"','')))issues.push(`${module.id}字体未统一`);
       if(style.textAlign!=="left")issues.push(`${module.id}未左对齐`);
       occupied.push(module);
     }
@@ -13178,15 +13296,15 @@ class XHSCardStudioView extends ItemView {
     } catch (error) {
       const page = this.pages[this.activePageIndex];
       if (page?.kind === "detail") {
-        console.error("[XHS Cards] 详情页图片导出失败", error);
+        console.error("[XHS Aura Design] 详情页图片导出失败", error);
         new Notice("详情页图片导出失败，请重试；不会导出另一套排版。" );
         return;
       }
-      console.warn("[XHS Cards] 预览节点导出失败，改用画布导出", error);
+      console.warn("[XHS Aura Design] 预览节点导出失败，改用画布导出", error);
       try {
         blob = await this.renderCanvasBlob(scale);
       } catch (canvasError) {
-        console.error("[XHS Cards] 导出失败", canvasError);
+        console.error("[XHS Aura Design] 导出失败", canvasError);
         new Notice(`导出失败：${canvasError && canvasError.message ? canvasError.message : "PNG 生成异常"}`);
         return;
       }
@@ -13317,7 +13435,7 @@ class XHSCardStudioView extends ItemView {
         const blob = await response.blob();
         img.setAttribute("src", await this.blobToDataUrl(blob));
       } catch (error) {
-        console.error("[XHS Cards] 图片内联到预览导出失败", error);
+        console.error("[XHS Aura Design] 图片内联到预览导出失败", error);
       }
     }));
   }
@@ -13510,8 +13628,8 @@ class XHSCardStudioView extends ItemView {
     this.roundRectPath(ctx, 0, 0, this.config.xhs_width, this.config.xhs_height, this.getCoverRadius());
     ctx.clip();
     await this.drawDetailBase(ctx, images);
-    let y = 76;
-    const contentLeft = 70;
+    let y = this.getDetailDesignSystem().margin;
+    const contentLeft = this.getDetailDesignSystem().margin;
     const contentWidth = this.getDetailContentWidth();
     const tokens = this.prepareDetailTokens(page.tokens || []);
     const imageDraws = [];
@@ -13788,9 +13906,7 @@ class XHSCardStudioView extends ItemView {
       segments.forEach((segment) => {
         const segmentWidth = this.measureTextWithSpacing(ctx, segment.text, letterSpacing);
         ctx.fillStyle = segment.highlight
-          ? (this.config.detail_title_color_mode === "gradient"
-            ? this.createDetailTitleGradient(ctx, cursorX, cursorY, Math.max(1, segmentWidth))
-            : (this.config.detail_title_highlight_color || this.config.accent_color || this.getDetailTextColor()))
+          ? DETAIL_DESIGN.colors.textHighlight
           : this.getDetailTextColor();
         this.drawLetterSpacedText(ctx, segment.text, cursorX, cursorY, letterSpacing);
         cursorX += segmentWidth;
@@ -13833,7 +13949,7 @@ class XHSCardStudioView extends ItemView {
     const system=this.getDetailDesignSystem();
     const index = Math.min(5, Math.max(0, level - 1));
     const size = system.headingSizes[index] * scale;
-    return {size,weight:system.typography.headingWeight,lineHeight:size*(index===0?system.typography.primaryLeading:system.typography.headingLeading)};
+    return {size,weight:DETAIL_DESIGN.typography.headingWeights[index],lineHeight:size*DETAIL_DESIGN.typography.headingLeading[index]};
   }
 
   parseDetailLink(source) {
@@ -13846,15 +13962,15 @@ class XHSCardStudioView extends ItemView {
   }
 
   getDetailCanvasFontFamily(heading = false) {
-    return CONTENT_FONT_STACK;
+    return this.getContentFontFamily("detail");
   }
 
   async ensureContentFontsLoaded() {
     if(typeof document==="undefined" || !document.fonts?.load)return;
     const text = "中文排版 English 123";
-    await Promise.all(["400", "600", "900", "italic 500"].map(
-      style => document.fonts.load(`${style} 36px ${CONTENT_FONT_STACK}`, text)
-    ));
+    await Promise.all([...new Set([this.getContentFontFamily("cover"),this.getContentFontFamily("detail")])].flatMap(font=>["400", "600", "900", "italic 500"].map(
+      style => document.fonts.load(`${style} 36px ${font}`, text)
+    )));
   }
 
   parseInlineSegments(text) {
@@ -14197,7 +14313,7 @@ class XHSCardStudioView extends ItemView {
         const bgImage = await this.loadImage(images.background);
         this.drawObjectFitImage(ctx, bgImage, 0, 0, width, height, "cover");
       } catch (error) {
-        console.error("[XHS Cards] 背景图导出失败", error);
+        console.error("[XHS Aura Design] 背景图导出失败", error);
       }
     }
 
@@ -14759,7 +14875,7 @@ class XHSCardStudioView extends ItemView {
           const segmentWidth = this.measureTextWithSpacing(ctx, run.text, letterSpacing);
           ctx.fillStyle = this.shouldUseTitleGradient(segment)
             ? this.createTextGradient(ctx, cursorX, cursorY, Math.max(1, segmentWidth))
-            : (segment.highlight ? (this.config.cover_highlight_color || (this.config.cover_editor_version===1 ? this.config.cover_title_color || module.color : this.config.accent_color || "#0071e3")) : this.resolveModuleFill(module.color || "var(--xhs-text)"));
+            : (segment.highlight ? (this.config.cover_highlight_color || "#007aff") : this.resolveModuleFill(module.color || "var(--xhs-text)"));
           this.strokeCoverText(ctx, run.text, cursorX, cursorY, segmentWidth, letterSpacing,
             segment.highlight ? "highlight" : "title", ctx.fillStyle);
           this.drawLetterSpacedText(ctx, run.text, cursorX, cursorY, letterSpacing);
@@ -14771,7 +14887,7 @@ class XHSCardStudioView extends ItemView {
   }
 
   getCanvasFontFamilyForModule(module) {
-    return CONTENT_FONT_STACK;
+    return this.getContentFontFamily("cover");
   }
 
   createTextGradient(ctx, x, y, width, stops = this.getTitleGradientStops()) {
@@ -15603,7 +15719,7 @@ class XHSCardStudioSettingTab extends PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "XHS Cards" });
+    containerEl.createEl("h2", { text: "XHS Aura Design" });
 
     new Setting(containerEl)
       .setName("图片素材目录")

@@ -84,15 +84,15 @@ for(const choice of view.getUnifiedCoverTemplates()) {
   for(const m of roles) {
     assert.equal(m.textAlign,'left');assert.equal(m.letterSpacing,0);
     assert.equal(m.fontWeight,{title:600,subtitle:600,description:400}[m.coverTextRole]);
-    assert.ok(m.fontSize>={title:choice.id==='neon-grid'?132:choice.id==='mosaic'?64:['aside-image','left-image-title'].includes(choice.id)?64:choice.id==='headline-band'?80:100,subtitle:choice.id==='headline-band'?32:40,description:choice.id==='headline-band'?24:36}[m.coverTextRole]);
+    assert.ok(m.fontSize>={title:choice.id==='neon-grid'?132:['mosaic','band-columns'].includes(choice.id)?64:['aside-image','left-image-title'].includes(choice.id)?64:choice.id==='headline-band'?80:100,subtitle:choice.id==='headline-band'?32:40,description:choice.id==='headline-band'?24:36}[m.coverTextRole]);
     assert.ok(m.x>=72 && m.x+m.w<=1008 && m.y>=72 && m.y+m.h<=1368,choice.id+' safe text bounds');
   }
-  assert.equal(roles.find(m=>m.coverTextRole==='title').x,choice.id==='left-image-title'?552:72);
+  assert.equal(roles.find(m=>m.coverTextRole==='title').x,choice.id==='left-image-title'?180:72);
   const rule=config.xhs_modules.find(m=>m.id==='cover-structure-rule');
-  assert.ok(rule && rule.h===2);assert.equal(rule.background,config.secondary_color);assert.ok(view.isLineModule(rule));
+  assert.ok(rule && rule.h===1);assert.equal(rule.background,config.secondary_color);assert.ok(view.isLineModule(rule));
   Object.assign(rule,{x:160,y:600,w:500,h:3,manualPosition:true,manualSize:true});
   view.layoutCoverText(config);
-  assert.deepEqual([rule.x,rule.y,rule.w,rule.h],[160,600,500,2]);
+  assert.deepEqual([rule.x,rule.y,rule.w,rule.h],[160,600,500,1]);
   Object.assign(rule,{manualPosition:false,manualSize:false});view.layoutCoverText(config);
   if(['center-banner','solid-poster'].includes(choice.id)) {
     const backdrop=config.xhs_modules.find(m=>m.id==='composition-block');
@@ -146,8 +146,8 @@ console.log('Ten cover text grids, typography and unchanged images passed');
   view.measureCoverText=(text,...args)=>text==='Caption'?{height:80,lines:2}:measure.call(view,text,...args);
   view.layoutCoverText(config);
   const sub=config.xhs_modules.find(m=>m.coverTextRole==='subtitle');
-  assert.ok(Math.abs(image.y-sub.y-sub.h-48)<1e-8);assert.equal(image.w,936);assert.equal(image.h,624);
-  assert.ok(Math.abs(image.w/image.h-3/2)<1e-9);assert.equal(image.x,(1080-image.w)/2);
+  assert.ok(Math.abs(image.y-sub.y-sub.h-48)<1e-8);assert.equal(image.w,1080);assert.equal(image.h,810);
+  assert.ok(Math.abs(image.w/image.h-4/3)<1e-9);assert.equal(image.x,(1080-image.w)/2);
   const caption=config.xhs_modules.find(m=>m.coverTextRole==='description');
   assert.ok(Math.abs(caption.y-image.y-image.h-32)<1e-8);
   assert.ok(caption.y+caption.h<=1368);

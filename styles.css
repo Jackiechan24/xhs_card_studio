@@ -8363,6 +8363,433 @@ body:has(.xhs-color-popover) .tooltip { display: none !important; }
   [data-detail-reference="courses"] .xhs-reference-item,
   .xhs-continuous-list
 ) {
-  outline:var(--detail-divider-width) solid var(--detail-divider-color);
-  outline-offset:calc(-1 * var(--detail-divider-width)); border-radius:var(--reference-radius); box-shadow:none;
+  outline:none; border-radius:var(--reference-radius); box-shadow:none;
 }
+
+/* Borderless reading cards. Internal title, row and column dividers keep their rules. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"] .xhs-native-markdown-block :is(
+  .xhs-module-number-list > li,
+  .xhs-module-category-list > li,
+  .xhs-module-plain-matrix:not(.xhs-continuous-list) > li,
+  .xhs-module-nested-list > li,
+  .xhs-continuous-list,
+  .xhs-module-checklist,
+  .xhs-table-record,
+  .xhs-reference-table,
+  .xhs-reference-table > tbody,
+  .xhs-reference-summary,
+  [data-detail-reference="metrics"] .xhs-reference-intro,
+  [data-detail-variant="label-content"],
+  [data-detail-variant="labelled-prose"] > .xhs-module-chapter-body,
+  [data-detail-reference="panel"] > .xhs-reference-list,
+  [data-detail-reference="attributes"] > .xhs-reference-list,
+  [data-detail-reference="tabs"] .xhs-reference-item,
+  [data-detail-reference="grid"] .xhs-reference-item,
+  [data-detail-reference="notices"] .xhs-reference-item,
+  [data-detail-reference="courses"] .xhs-reference-item,
+  [data-detail-reference="metrics"] .xhs-reference-item,
+  table:not(.xhs-module-record-table):not(.xhs-reference-table),
+  pre,
+  .callout,
+  .xhs-detail-callout
+) {
+  border:0 !important;
+  outline:none !important;
+  box-shadow:none !important;
+}
+
+/* Reading surface rules: one divider weight, inset separators, balanced content. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"] .xhs-native-markdown-block :is(
+  hr,
+  td,th,
+  h1,h2,h3,h4,h5,h6,
+  .xhs-module-prose-label,
+  .xhs-module-parent-heading,
+  .xhs-module-item-heading,
+  .xhs-reference-item-title,
+  .xhs-reference-item + .xhs-reference-item,
+  .xhs-reference-table > tbody > tr + tr,
+  .xhs-continuous-list > li + li,
+  .xhs-module-checklist > li + li,
+  .callout-title,
+  .xhs-detail-callout-title
+) {
+  border-color:var(--detail-divider-color);
+  /* Width alone cannot create a new border on a side whose style is none. */
+  border-width:var(--detail-divider-width) !important;
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block :is(
+  .xhs-module-prose-label,
+  .xhs-module-parent-heading,
+  [data-detail-reference="grid"] .xhs-reference-item-title,
+  .callout-title:not(.xhs-callout-type-only),
+  .xhs-detail-callout-title
+) {
+  width:auto; margin:0 0 var(--reference-title-gap); padding:0 0 var(--reference-title-gap);
+  border-bottom:var(--detail-divider); box-sizing:border-box;
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block :is(
+  .xhs-continuous-list > li,
+  .xhs-module-plain-matrix:not(.xhs-continuous-list) > li
+) { align-content:center; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-continuous-list > li {
+  padding-block:var(--reference-item-gap);
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block :is(
+  .xhs-continuous-list > li,
+  .xhs-module-item-body,
+  .xhs-reference-body,
+  [data-detail-variant="labelled-prose"] > .xhs-module-chapter-body
+) > :last-child { margin-bottom:0; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="tabs"] :is(.xhs-reference-item-title,.xhs-reference-body) {
+  align-self:stretch; align-content:center; padding-block:var(--reference-padding); box-sizing:border-box;
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="tabs"] .xhs-reference-item-title {
+  position:relative; display:flex; align-items:center; justify-content:center; border-right:0;
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="tabs"] .xhs-reference-item-title::after {
+  content:""; position:absolute; right:0; top:var(--reference-padding); bottom:var(--reference-padding);
+  width:var(--detail-divider-width); background:var(--detail-divider-color); pointer-events:none;
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="tabs"] .xhs-reference-body {
+  display:block; text-align:left; text-align-last:left;
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="tabs"] .xhs-reference-body > :first-child,
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="tabs"] .xhs-reference-item-title > :first-child { margin-top:0; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="tabs"] .xhs-reference-item-title > :last-child { margin-bottom:0; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="tabs"] .xhs-reference-body.is-single-line-body,
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="tabs"] .xhs-reference-body.is-single-line-body :is(p,span,strong,b,mark,a) { text-align:center; text-align-last:center; }
+
+/* Page/section title rules have more contrast; card-internal separators stay unchanged. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"] .xhs-native-markdown-block :is(h1,h2):not(.xhs-reference-module *,[data-detail-variant="labelled-prose"] *,.callout *,.xhs-detail-callout *) {
+  border-bottom-color:var(--detail-heading-divider-color,#d2d2d7) !important;
+}
+
+/* Aura sidebar: Coss-style section hierarchy, compact controls and consistent spacing. */
+.xhs-studio-root[data-workbench-ui="coss"] {
+  --xhs-ui-font: "Segoe UI", "Microsoft YaHei UI", system-ui, sans-serif;
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls {
+  padding:16px; scrollbar-gutter:stable; font:400 13px/20px var(--xhs-ui-font);
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-studio-advanced-section {
+  border:0; border-top:1px solid #e4e4e7; margin:0 0 16px; padding:12px 0 0;
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-studio-advanced-section > summary {
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  min-height:32px; padding:0; margin:0; list-style:none;
+  font:600 14px/20px var(--xhs-ui-font); color:#18181b; cursor:pointer; user-select:none;
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls summary::-webkit-details-marker { display:none; }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls summary::marker { content:""; }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls summary::after {
+  content:""; width:6px; height:6px; flex:0 0 6px; margin-right:5px;
+  border-right:1.5px solid #71717a; border-bottom:1.5px solid #71717a;
+  transform:rotate(-45deg); transition:transform .12s;
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls details[open] > summary::after { transform:rotate(45deg); }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-studio-advanced-content { padding-top:8px; }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls :is(h3,.xhs-module-library-title) {
+  margin:20px 0 8px; padding:0; font:600 14px/20px var(--xhs-ui-font);
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls h3:first-child { margin-top:0; }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-studio-field { gap:4px; margin:0 0 12px; }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-studio-label { margin:0; font:400 13px/20px var(--xhs-ui-font); color:#71717a; }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls :is(button,input,textarea,select) { font-family:var(--xhs-ui-font); font-size:13px; }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls :is(.xhs-unified-choice-grid,.xhs-module-library-grid):not(.xhs-color-palette) { gap:8px; }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-unified-choice:not(.xhs-cover-color-choice) {
+  height:36px; min-height:36px; border-radius:8px; padding:0 10px; font-size:13px;
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-cover-template-option { padding:0 8px; gap:8px; }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls textarea { min-height:64px; padding:8px 10px; line-height:20px; border-radius:8px; }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-cover-reset-button { margin:12px 0 4px; height:36px; font-size:13px; }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-cover-color-group { margin:12px 0; padding:12px; border-radius:12px; }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-title { white-space:nowrap; }
+@media(prefers-reduced-motion:reduce) {
+ .xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls summary::after { transition:none; }
+}
+
+/* Shared menu states: stable surfaces, fine blue selection borders. */
+.xhs-studio-root[data-workbench-ui="coss"] :is(.xhs-studio-controls,.xhs-cover-style-toolbar) {
+  --xhs-menu-border:#e4e4e7;
+  --xhs-menu-hover:#b8c7dc;
+  --xhs-menu-selected:#93bff2;
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls button:is(.xhs-unified-choice,.xhs-module-preset):not(.xhs-cover-color-choice),
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-cover-style-toolbar.xhs-compact-toolbar button.xhs-canvas-tool-button {
+  background:#fff; color:#3f3f46; border:1px solid var(--xhs-menu-border);
+  box-shadow:none; outline:none; font-weight:500;
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls button:is(.xhs-unified-choice,.xhs-module-preset):not(.xhs-cover-color-choice):hover:not(:disabled),
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-cover-style-toolbar.xhs-compact-toolbar button.xhs-canvas-tool-button:hover:not(:disabled) {
+  background:#fff; color:#18181b; border-color:var(--xhs-menu-hover); box-shadow:none;
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls button:is(.xhs-unified-choice,.xhs-module-preset):not(.xhs-cover-color-choice):is(.is-active,[aria-pressed="true"],:active),
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-cover-style-toolbar.xhs-compact-toolbar button.xhs-canvas-tool-button:is(.is-active,[aria-pressed="true"],:active) {
+  background:#fff; color:#0071e3; border-color:var(--xhs-menu-selected); box-shadow:none;
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls button.xhs-module-preset:focus:not(:focus-visible) {
+  background:#fff; border-color:var(--xhs-menu-selected); outline:none; box-shadow:none;
+}
+.xhs-studio-root[data-workbench-ui="coss"] :is(.xhs-studio-controls,.xhs-cover-style-toolbar) button:focus-visible {
+  outline:2px solid #0071e3; outline-offset:2px;
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-cover-style-toolbar.xhs-compact-toolbar button.xhs-cover-delete-tool { color:#b72d25; }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-cover-template-option { justify-content:flex-start; text-align:left; }
+/* One intrinsic row, fitted to the available pane without wrapping or scrolling. */
+.xhs-studio-root .xhs-compact-toolbar .xhs-toolbar-single-row {
+  display:flex; flex-direction:row; flex-wrap:nowrap; align-items:center;
+  gap:8px; max-width:none; min-width:0;
+}
+.xhs-studio-root .xhs-compact-toolbar .xhs-toolbar-function-group {
+  display:inline-flex; flex:0 0 auto; align-items:center; flex-wrap:nowrap; gap:4px;
+  width:auto; max-width:none; min-width:0; margin:0; padding:0;
+}
+.xhs-studio-root .xhs-compact-toolbar .xhs-toolbar-function-group + .xhs-toolbar-function-group {
+  border-left:1px solid #e4e4e7; padding-left:8px;
+}
+.xhs-studio-root .xhs-compact-toolbar .xhs-toolbar-function-group[data-function="模块操作"] { margin-left:0; }
+.xhs-studio-root .xhs-compact-toolbar .xhs-toolbar-function-group :is(.xhs-cover-stepper,.xhs-canvas-align-group,.xhs-cover-action-tools) {
+  border-left:0; padding-left:0; margin-left:0;
+}
+.xhs-studio-root .xhs-compact-toolbar .xhs-toolbar-function-group .xhs-canvas-toolbar-label { padding:0 2px; font-size:12px; }
+.xhs-studio-root .xhs-compact-toolbar .xhs-toolbar-function-group .xhs-canvas-toolbar-value { min-width:26px; padding:0 1px; font-size:12px; }
+.xhs-studio-root .xhs-compact-toolbar .xhs-toolbar-function-group button.xhs-canvas-tool-button { min-width:24px; padding:0 6px; font-size:12px; }
+.xhs-studio-root .xhs-compact-toolbar .xhs-toolbar-function-group :is(.xhs-cover-stepper,.xhs-canvas-align-group) button.xhs-canvas-tool-button { width:24px; min-width:24px; padding:0; }
+.xhs-studio-root .xhs-compact-toolbar .xhs-toolbar-function-group .xhs-cover-mode-select { min-width:90px; width:90px; padding:0 4px; font-size:12px; }
+.xhs-studio-root .xhs-compact-toolbar .xhs-toolbar-function-group .xhs-opacity-track { width:80px; }
+.xhs-studio-root .xhs-compact-toolbar .xhs-toolbar-function-group input.xhs-cover-label-text { width:100px; min-width:0; }
+
+/* Compact toolbar follows its contents rather than spreading actions apart. */
+.xhs-studio-root .xhs-studio-preview-shell > .xhs-cover-style-toolbar.xhs-compact-toolbar:not(.xhs-footer-text-toolbar) {
+  width:fit-content; max-width:100%; justify-self:center; gap:0;
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls button.xhs-cover-template-option:not(.xhs-cover-color-choice):is(.is-active,[aria-pressed="true"]),
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls button.xhs-cover-template-option:not(.xhs-cover-color-choice):is(.is-active,[aria-pressed="true"]):hover:not(:disabled) {
+  background:#0071e3; border-color:#0071e3; color:#fff;
+}
+
+/* Font emphasis and Markdown marker backgrounds are independent channels. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"] .xhs-native-markdown-block.markdown-rendered [data-xhs-emphasis="text"] {
+  color:var(--xhs-detail-title-highlight,#0071e3); -webkit-text-fill-color:currentColor;
+  background:transparent; box-shadow:none;
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type][data-detail-color-policy] .xhs-detail-markdown.xhs-detail-layout-principles .xhs-native-markdown-block.markdown-rendered mark[data-xhs-highlight-style="text"],
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type][data-detail-color-policy] .xhs-detail-markdown.xhs-detail-layout-principles .xhs-native-markdown-block.markdown-rendered mark[data-xhs-highlight-style="text"] * {
+  color:var(--xhs-mark-foreground,var(--xhs-detail-title-highlight,#0071e3)); -webkit-text-fill-color:currentColor;
+  background:transparent; box-shadow:none; padding:0;
+}
+
+/* Inline record fields share the title's and body's value-column anchor. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-module-record-table .xhs-table-record.has-inline-fields > td[data-reading-field-role="title"] {
+  display:grid;
+  grid-template-columns:minmax(var(--detail-record-label-width,0px),max-content) minmax(0,1fr);
+  align-items:baseline; gap:0 var(--reference-title-gap);
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-module-record-table .xhs-table-record.has-inline-fields > td[data-reading-field-role="title"] > .xhs-table-field-label {
+  max-width:calc(var(--detail-caption-size) * 4); margin-bottom:0;
+}
+
+/* A single marker lane: 8px circle + 16px gap. Nested levels add one lane. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"] {
+  --xhs-list-marker-size:8px;
+  --xhs-list-marker-gap:16px;
+  --xhs-list-marker-lane:calc(var(--xhs-list-marker-size) + var(--xhs-list-marker-gap));
+}
+:is(.xhs-studio-root .xhs-card,.xhs-card[data-detail-design-system]).xhs-page-detail[data-detail-design-system="unified-detail-1"] .xhs-native-markdown-block ul:where(:not(.xhs-module-plain-matrix,.xhs-module-category-list,.xhs-module-nested-list,.xhs-module-checklist,.xhs-reference-list)) {
+  padding-inline:0; margin-inline:0; list-style:none;
+}
+:is(.xhs-studio-root .xhs-card,.xhs-card[data-detail-design-system]).xhs-page-detail[data-detail-design-system="unified-detail-1"] .xhs-native-markdown-block ul:where(:not(.xhs-module-plain-matrix,.xhs-module-category-list,.xhs-module-nested-list,.xhs-module-checklist,.xhs-reference-list)) > li:not(.task-list-item),
+:is(.xhs-studio-root .xhs-card,.xhs-card[data-detail-design-system]).xhs-page-detail[data-detail-design-system="unified-detail-1"] .xhs-native-markdown-block [data-detail-reference] .xhs-reference-body ul > li:not(.task-list-item) {
+  position:relative; list-style:none; padding-inline:var(--xhs-list-marker-lane) 0;
+  padding-block:0; margin-block:0;
+}
+:is(.xhs-studio-root .xhs-card,.xhs-card[data-detail-design-system]).xhs-page-detail[data-detail-design-system="unified-detail-1"] .xhs-native-markdown-block ul:where(:not(.xhs-module-plain-matrix,.xhs-module-category-list,.xhs-module-nested-list,.xhs-module-checklist,.xhs-reference-list)) > li:not(.task-list-item)::before,
+:is(.xhs-studio-root .xhs-card,.xhs-card[data-detail-design-system]).xhs-page-detail[data-detail-design-system="unified-detail-1"] .xhs-native-markdown-block [data-detail-reference] .xhs-reference-body ul > li:not(.task-list-item)::before {
+  content:""; display:block; position:absolute; left:0;
+  top:calc((var(--detail-body-leading) - var(--xhs-list-marker-size)) / 2);
+  width:var(--xhs-list-marker-size); height:var(--xhs-list-marker-size);
+  border:0; border-radius:50%; margin:0; padding:0; transform:none;
+}
+:is(.xhs-studio-root .xhs-card,.xhs-card[data-detail-design-system]).xhs-page-detail[data-detail-design-system="unified-detail-1"] .xhs-native-markdown-block ul:where(:not(.xhs-module-plain-matrix,.xhs-module-category-list,.xhs-module-nested-list,.xhs-module-checklist,.xhs-reference-list)) > li:not(.task-list-item) + li:not(.task-list-item) {
+  margin-top:16px;
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"] .xhs-native-markdown-block li > ul:where(:not(.xhs-reference-list)) { margin-block:16px 0; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"] .xhs-native-markdown-block .xhs-module-nested-list > li > ul { margin-top:0; }
+
+/* Compact sidebar palettes keep six circles inside the border at every pane width. */
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-color-palette {
+  width:100%; min-width:0; box-sizing:border-box; padding:6px; gap:6px 4px;
+  grid-template-columns:repeat(6,minmax(0,1fr)); justify-items:center;
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-color-palette button.xhs-unified-choice.xhs-cover-color-choice {
+  width:100%; min-width:0; max-width:36px; height:auto; min-height:0; max-height:none;
+  aspect-ratio:1; padding:3px; flex:none;
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-color-palette .xhs-cover-color-swatch {
+  width:100%; height:100%; min-width:0; min-height:0; flex:1; aspect-ratio:1;
+}
+/* Nested list markers start at their card inset, without stacked UL indentation. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-module-nested-list :is(ul):not(.xhs-reference-list) {
+  padding-inline:0; margin-inline:0;
+}
+/* Two-column tables: one shared column axis and 24px breathing room per side. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block table:not(.xhs-module-record-table):not(.xhs-reference-table) :is(th,td) {
+  padding:16px 24px; vertical-align:top; text-align:left;
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block table:not(.xhs-module-record-table):not(.xhs-reference-table) tr.xhs-two-cell-row > :first-child { width:30%; }
+/* The exported line remains 1px; only its invisible editor hit area expands. */
+.xhs-studio-root .xhs-page-cover .xhs-edit-module.xhs-line-edit-target { overflow:visible; }
+.xhs-studio-root .xhs-page-cover .xhs-edit-module.xhs-line-edit-target::after {
+  content:""; position:absolute; inset:-10px 0; min-height:22px; background:transparent; cursor:grab;
+}
+.xhs-studio-root .xhs-cover-style-toolbar input.xhs-canvas-line-number {
+  width:64px; height:32px; padding:4px 8px; border:1px solid #d4d4d8; border-radius:8px;
+  text-align:center; font:400 13px/20px var(--xhs-ui-font);
+}
+.xhs-studio-root .xhs-cover-style-toolbar .xhs-cover-mode-select { border:1px solid #d4d4d8; border-radius:8px; background:#fff; }
+.xhs-studio-root .xhs-cover-style-toolbar .xhs-cover-mode-select::after {
+  content:""; width:5px; height:5px; border-right:1px solid #71717a; border-bottom:1px solid #71717a;
+  transform:rotate(45deg); right:8px; top:11px;
+}
+.xhs-studio-root .xhs-cover-style-toolbar .xhs-opacity-track { overflow:hidden; border-radius:8px; }
+.xhs-studio-root .xhs-cover-style-toolbar .xhs-opacity-track input.xhs-cover-opacity-slider {
+  border:1px solid #d4d4d8; border-radius:8px; box-shadow:none;
+}
+
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"] .xhs-native-markdown-block .xhs-module-nested-list ul {
+  padding-inline:0 !important; margin-inline:0 !important; width:auto;
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"] .xhs-native-markdown-block .xhs-module-nested-list ul > li {
+  margin-inline:0 !important; text-indent:0; padding-inline:var(--xhs-list-marker-lane) 0 !important;
+}
+
+/* Library thumbnails are UI previews, independent from the inserted image size. */
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-module-preset { overflow:hidden; box-sizing:border-box; }
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-preset-image .xhs-module-preset-icon {
+  width:min(100%,90px); height:56px; min-height:0; max-height:56px;
+  aspect-ratio:auto !important; flex:none; overflow:hidden; line-height:18px;
+}
+/* Colgroup owns geometry; headers and values share equal padding on every row. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block table:not(.xhs-module-record-table):not(.xhs-reference-table) tr.xhs-two-cell-row > :first-child {
+  width:auto;
+}
+
+/* Detail single-source standard. These tokens are generated from DETAIL_DESIGN. */
+.xhs-card.xhs-page-detail[data-detail-spacing-standard="single-source-1"] {
+  --reference-padding:var(--detail-design-card-padding);
+  --reference-radius:var(--detail-design-card-radius);
+  --reference-gap:var(--detail-design-card-gap);
+  --reference-title-gap:var(--detail-design-space-title-body);
+  --reference-item-gap:var(--detail-design-space-item);
+  --reference-column-gap:var(--detail-design-space-column);
+  --reference-field-gap:var(--detail-design-space-item);
+  --reference-paragraph-gap:var(--detail-design-space-paragraph);
+  --xhs-list-marker-size:var(--detail-design-bullet-size);
+  --xhs-list-marker-gap:var(--detail-design-bullet-gap);
+  --xhs-list-marker-lane:var(--detail-design-bullet-indent);
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block :is(
+ .xhs-module-prose-label,.xhs-module-parent-heading,[data-detail-reference="grid"] .xhs-reference-item-title,
+ .callout-title:not(.xhs-callout-type-only),.xhs-detail-callout-title
+) {
+  margin:0 0 var(--detail-design-divider-after); padding:0 0 var(--detail-design-divider-before);
+  border-bottom:var(--detail-divider); border-bottom-width:var(--detail-design-divider-width) !important;
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block :is(
+ .xhs-module-prose-label,.xhs-module-parent-heading,[data-detail-reference="grid"] .xhs-reference-item-title,
+ .callout-title:not(.xhs-callout-type-only),.xhs-detail-callout-title
+) + * { margin-top:0 !important; }
+/* Shared outer shells; structural children do not add another card inset. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block :is(
+ .xhs-table-record,.xhs-reference-summary,.xhs-module-checklist,.xhs-continuous-list,
+ [data-detail-reference="panel"] > .xhs-reference-list,
+ [data-detail-reference="attributes"] > .xhs-reference-list,
+ [data-detail-reference="metrics"] > .xhs-reference-list,
+ [data-detail-reference="notices"] > .xhs-reference-list > li,
+ [data-detail-reference="grid"] > .xhs-reference-list > li,
+ [data-detail-reference="courses"] > .xhs-reference-list > li,
+ [data-detail-reference="tabs"] > .xhs-reference-list > li
+) { padding:var(--detail-design-card-padding); border-radius:var(--detail-design-card-radius); box-sizing:border-box; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block :is(.xhs-continuous-list,.xhs-module-checklist) > li {
+  padding-top:var(--detail-design-divider-before); padding-bottom:var(--detail-design-divider-after);
+  padding-right:0;
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-continuous-list > li { padding-left:var(--xhs-list-marker-lane); }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-continuous-list > li > .xhs-module-bullet { left:0; top:calc(var(--detail-design-divider-before) + (var(--detail-body-leading) - var(--xhs-list-marker-size)) / 2); }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="tabs"] :is(.xhs-reference-item-title,.xhs-reference-body) { padding:0; align-content:start; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="tabs"] .xhs-reference-item-title::after { top:0; bottom:0; }
+/* Tables share the 32px outer shell. The 24px column gap is split equally. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block table:not(.xhs-module-record-table):not(.xhs-reference-table) {
+  padding:var(--detail-design-card-padding); border-collapse:separate; border-spacing:0;
+  border-radius:var(--detail-design-card-radius);
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block table:not(.xhs-module-record-table):not(.xhs-reference-table) :is(th,td) {
+  padding:var(--detail-design-divider-before) calc(var(--detail-design-space-column) / 2) var(--detail-design-divider-after);
+  border-bottom-width:var(--detail-design-divider-width) !important;
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block table:not(.xhs-module-record-table):not(.xhs-reference-table) tr > :first-child { padding-left:0; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block table:not(.xhs-module-record-table):not(.xhs-reference-table) tr > :last-child { padding-right:0; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block table:not(.xhs-module-record-table):not(.xhs-reference-table) thead > tr:first-child > * { padding-top:0; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block table:not(.xhs-module-record-table):not(.xhs-reference-table) tbody > tr:last-child > * { padding-bottom:0; }
+/* Source Markdown alignment overrides defaults. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block table :is([data-detail-cell-align="right"],[align="right"]) { text-align:right !important; text-align-last:right; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block table :is([data-detail-cell-align="center"],[align="center"]) { text-align:center !important; text-align-last:center; }
+
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-table-record > td[data-reading-field-role="title"] {
+  padding-bottom:var(--detail-design-divider-before);
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-table-record > td[data-reading-field-role="title"] + td { margin-top:var(--detail-design-divider-after); }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block :is([data-detail-reference="panel"],[data-detail-reference="attributes"],[data-detail-reference="metrics"]) > .xhs-reference-list > li {
+  padding-inline:0;
+}
+
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="attributes"] .xhs-reference-table > tbody { padding:var(--detail-design-card-padding); }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="attributes"] .xhs-reference-table > tbody > tr { padding:var(--detail-design-divider-before) 0 var(--detail-design-divider-after); }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="attributes"] .xhs-reference-table > tbody > tr:first-child { padding-top:0; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="attributes"] .xhs-reference-table > tbody > tr:last-child { padding-bottom:0; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-module-checklist > li {
+  --xhs-row-inset:var(--detail-design-divider-before);
+  padding-left:calc(var(--detail-gap-control) + var(--detail-design-bullet-gap));
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block :is(.xhs-module-checklist,.xhs-continuous-list) > li:first-child { padding-top:0; --xhs-row-inset:0px; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block :is(.xhs-module-checklist,.xhs-continuous-list) > li:last-child { padding-bottom:0; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-module-checklist > li :is(input[type="checkbox"]) { left:0; top:calc(var(--xhs-row-inset) + (var(--detail-body-leading) - var(--detail-gap-control)) / 2); }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-continuous-list > li:first-child > .xhs-module-bullet { top:calc((var(--detail-body-leading) - var(--xhs-list-marker-size)) / 2); }
+
+/* Card-edge audit fixes: shell padding is not added to first/last child spacing. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block :is(.xhs-module-number-list > li,.xhs-module-category-list > li,.xhs-module-nested-list > li,[data-detail-variant="labelled-prose"] > .xhs-module-chapter-body) {
+ padding:var(--detail-design-card-padding); box-sizing:border-box;
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block :is(.xhs-module-item-body,.xhs-reference-body,.xhs-module-chapter-body) > :first-child { margin-top:0 !important; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block :is(.xhs-module-item-body,.xhs-reference-body,.xhs-module-chapter-body) > :last-child { margin-bottom:0 !important; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="panel"] > .xhs-reference-list > li:first-child { padding-top:0; margin-top:0; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block [data-detail-reference="panel"] > .xhs-reference-list > li:last-child { padding-bottom:0; margin-bottom:0; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-module-number-list > li.is-titled-item { row-gap:var(--detail-design-space-title-body); }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-module-number-list > li.is-titled-item > .xhs-module-item-title { margin:0; }
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-module-number-list > li.is-titled-item > .xhs-module-item-body { margin:0 !important; }
+
+/* Bullet lanes live inside the content area; preserve their 8+16 offset. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-spacing-standard="single-source-1"][data-detail-page-type="modular"] .xhs-native-markdown-block .xhs-module-nested-list > li.is-plain-reading-item {
+ padding-left:calc(var(--detail-design-card-padding) + var(--detail-design-bullet-indent));
+}
+
+/* Measured against the first text line, independent of title/body font size. */
+.xhs-card.xhs-page-detail .xhs-native-markdown-block [data-xhs-bullet-aligned="true"]::before {
+  top:var(--xhs-bullet-top) !important; transform:none;
+}
+
+/* Ordinary table surfaces follow the same light/dark palette as other cards. */
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block table:not(.xhs-module-record-table):not(.xhs-reference-table):not([data-detail-background="blue"],[data-detail-background="blue"] *) {
+  background:var(--detail-card-surface); color:var(--xhs-detail-text);
+}
+.xhs-card.xhs-page-detail[data-detail-design-system="unified-detail-1"][data-detail-page-type="modular"] .xhs-native-markdown-block table:not(.xhs-module-record-table):not(.xhs-reference-table):not([data-detail-background="blue"],[data-detail-background="blue"] *) :is(thead,tbody,tr,th,td) {
+  background:transparent; color:inherit;
+}
+/* Gradient dots have no dark stroke or inherited image decorations. */
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-color-palette .xhs-cover-color-swatch[data-gradient-swatch="true"] {
+  border:0; outline:0; box-shadow:none; background-origin:border-box; background-clip:border-box;
+  background-repeat:no-repeat; background-size:100% 100%; overflow:hidden;
+}
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-cover-color-swatch[data-gradient-swatch="true"]::before,
+.xhs-studio-root[data-workbench-ui="coss"] .xhs-studio-controls .xhs-cover-color-swatch[data-gradient-swatch="true"]::after { content:none; }

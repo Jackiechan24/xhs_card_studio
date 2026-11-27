@@ -1,10 +1,10 @@
-# XHS Cards（小红卡）
+# XHS Aura Design（小红卡）
 
 **将 Obsidian 笔记排版为可发布的小红书图文卡片。**
 
 用一篇已有的教程、工作复盘或学习笔记做底稿，在同一个工作台完成封面编辑、正文分页和图片导出。
 
-[![XHS Cards 工作台，左侧是 Obsidian 笔记，右侧是成品封面](docs/readme/cover-editor.png)](docs/readme/cover-editor.png)
+[![XHS Aura Design 工作台，左侧是 Obsidian 笔记，右侧是成品封面](docs/readme/cover-editor.png)](docs/readme/cover-editor.png)
 
 ## 产品特点
 
@@ -15,7 +15,7 @@
 
 ## 安装与使用
 
-在桌面版 Obsidian 打开「设置 → 第三方插件 → 浏览」，搜索 **XHS Cards** 并安装启用。也可以从 [官方插件页](https://community.obsidian.md/plugins/xhs-card-studio) 打开安装入口。
+在桌面版 Obsidian 打开「设置 → 第三方插件 → 浏览」，搜索 **XHS Aura Design** 并安装启用。也可以从 [官方插件页](https://community.obsidian.md/plugins/xhs-card-studio) 打开安装入口。
 
 手动安装时，从 [GitHub Releases](https://github.com/Jackiechan24/xhs_card_studio/releases) 下载同一版本的 `main.js`、`manifest.json` 和 `styles.css`，放入知识库的 `.obsidian/plugins/xhs-card-studio/` 目录，重启 Obsidian 后启用插件。
 
@@ -42,8 +42,8 @@
 
 ## English Quick Start
 
-XHS Cards turns Markdown notes into Xiaohongshu covers and multi-page image cards. It combines editable cover templates, automatic pagination, and high-resolution PNG export in one workspace.
+XHS Aura Design turns Markdown notes into Xiaohongshu covers and multi-page image cards. It combines editable cover templates, automatic pagination, and high-resolution PNG export in one workspace.
 
-In Obsidian desktop, open **Settings → Community plugins → Browse**, search for **XHS Cards**, and install and enable it. Open a note and click the image icon in the ribbon. Choose a cover template, preview the cards, and export the current page or the full set.
+In Obsidian desktop, open **Settings → Community plugins → Browse**, search for **XHS Aura Design**, and install and enable it. Open a note and click the image icon in the ribbon. Choose a cover template, preview the cards, and export the current page or the full set.
 
 [MIT License](LICENSE)

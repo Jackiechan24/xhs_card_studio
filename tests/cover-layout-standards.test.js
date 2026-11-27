@@ -9,9 +9,10 @@ for(const c of v.getUnifiedCoverTemplates()){
  for(const m of roles){assert.ok(m.x>=72&&m.x+m.w<=1008,c.id+' horizontal bounds');assert.ok(m.y>=72&&m.y+m.h<=1368,c.id+' vertical bounds');}
  if(['aside-image','left-image-title'].includes(c.id)){
   const title=roles.find(m=>m.coverTextRole==='title'),image=images[0];
-  assert.equal(title.x,c.id==='aside-image'?72:552);assert.equal(image.x,c.id==='aside-image'?552:72);assert.equal(title.w,456);assert.equal(image.w,456);assert.equal(image.objectFit,'contain');assert.equal(image.borderRadius,24);
+  assert.equal(title.x,c.id==='aside-image'?72:180);assert.equal(image.x,c.id==='aside-image'?480:0);assert.equal(title.w,c.id==='aside-image'?936:828);assert.equal(image.w,c.id==='aside-image'?528:600);assert.equal(image.w/image.h,3/4);assert.equal(image.objectFit,'contain');assert.equal(image.borderRadius,24);
  }
- if(c.id==='headline-band'){assert.equal(images[0].x,72);assert.equal(images[0].w,936);assert.equal(images[0].w/images[0].h,1.5);}
+ if(c.id==='band-columns'){assert.equal(images[0].w,936);assert.equal(images[0].h,702);assert.equal(images[0].objectFit,'contain');}
+ if(c.id==='headline-band'){assert.equal(images[0].x,(1080-images[0].w)/2);assert.ok(images[0].w<=1080);assert.equal(images[0].w/images[0].h,4/3);}
  const geometry=()=>JSON.stringify(config.xhs_modules.map(m=>[m.id,...bounds(m)]));const before=geometry();v.layoutCoverText();assert.equal(geometry(),before,c.id+' reflow drift');
  const selected=images[0]||roles[0];selected.x+=8;selected.y+=8;selected.manualPosition=true;
  const others=config.xhs_modules.filter(m=>m!==selected&&(m.type==='image'||m.coverTextRole)).map(m=>[m.id,...bounds(m)]);
